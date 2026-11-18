@@ -1,0 +1,1 @@
+c84f540e07a4985af6bbcf2c3f295ca1cf5d61eb62973186c059b320a3afb2e0 https://github.com/pportilla/atlas-website/releases/download/atlas-890d75ed5c5d-fca1254ea438/atlas-runtime.tar.gz
