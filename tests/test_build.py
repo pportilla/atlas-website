@@ -14,15 +14,6 @@ ATLAS = Path(os.environ.get("ATLAS_CHECKOUT", Path(__file__).resolve().parents[2
 
 
 class ManualLinksTests(unittest.TestCase):
-    def test_runtime_urls_accept_web_and_loopback_for_local_runs(self):
-        for value in ("https://mybinder.org/v2/gh/org/site/sha?urlpath=tool%2F", "../terminal/",
-                      "http://localhost:8888/tool", "http://[::1]:8888/tool"):
-            self.assertEqual(build_site.runtime_url(value), value)
-        for value in ("javascript:alert(1)", "//example.org/app", "http://example.org/app", "https:///app",
-                      "https://user:password@example.org/app", "bad\nlink", "/\\example.org/app"):
-            with self.subTest(value=value), self.assertRaises(ValueError):
-                build_site.runtime_url(value)
-
     def test_pin_git_links_preserves_local_line_links(self):
         sha = "a" * 40
         for kind in ("tree", "blob"):
@@ -72,10 +63,25 @@ class BuildTests(unittest.TestCase):
             kernel = out / "docs/source/native/groebner.cpp.html"
             self.assertIn('<a href="../../../index.html">Atlas website</a>', kernel.read_text())
             self.assertTrue((kernel.parent / "../../../index.html").is_file())
-            self.assertIn(build_site.TERMINAL_DEFAULT, (out / "terminal/index.html").read_text())
-            build_site.build(ATLAS, out, terminal_url="https://example.com/app?a=1&b=2", resolution_url="./suite/")
-            self.assertIn('href="https://example.com/app?a=1&amp;b=2"', (out / "terminal/index.html").read_text())
-            self.assertIn('href="./suite/"', (out / "resolution/index.html").read_text())
+            build_site.build(ATLAS, out)
+            terminal = (out / "terminal/index.html").read_text()
+            self.assertIn('src="../assets/terminal.js"', terminal)
+            self.assertIn('id="start-terminal"', terminal)
+            self.assertIn('<span class="t-brand">', terminal)
+            self.assertNotIn("http-equiv=", terminal)
+            resolution = (out / "resolution/index.html").read_text()
+            self.assertIn('id="resolve-form"', resolution)
+            self.assertIn('id="runtime-status"', resolution)
+            self.assertIn('<span class="t-paper">', resolution)
+            self.assertNotIn("<!--atlas:", resolution)
+            self.assertIn('href="../" aria-label="Atlas home"', resolution)
+            hook = resolution.index('src="../assets/resolution.js"')
+            self.assertLess(hook, resolution.index('src="exact-json.js"'))
+            self.assertLess(hook, resolution.index('src="app.js"'))
+            for asset in ("app.js", "exact-json.js", "identity.css", "style.css", "fonts/source-code-pro.woff2"):
+                with self.subTest(asset=asset):
+                    original = subprocess.check_output(["git", "show", f"{sha}:web/{asset}"], cwd=ATLAS)
+                    self.assertEqual((out / "resolution" / asset).read_bytes(), original)
 
             home = (out / "index.html").read_text()
             self.assertEqual(home.lower().count("<!doctype html>"), 1)

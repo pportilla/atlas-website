@@ -3,20 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="refresh" content="0;url=@TERMINAL_URL@">
-  <title>Atlas terminal</title>
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" href="../docs/_static/atlas-mark.svg">
+  <title>Terminal · Atlas</title>
+  <link rel="icon" href="../docs/_static/atlas-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../docs/_static/identity.css">
   <link rel="stylesheet" href="../docs/_static/docs.css">
+  <link rel="stylesheet" href="../assets/terminal.css">
+  <link rel="stylesheet" href="../tools.css">
+  <script>try { const theme = localStorage.getItem("atlas-theme"); if (theme) document.documentElement.dataset.theme = theme; } catch (error) {}</script>
+  <script src="../assets/terminal.js" defer></script>
 </head>
 <body>
-  <main class="content">
-    <article class="prose">
-      <h1>Atlas terminal</h1>
-      <p><a href="@TERMINAL_URL@">Open your session <span aria-hidden="true">↗</span></a></p>
-      <p><a href="../">Atlas home</a></p>
-    </article>
+  <a class="skip-link" href="#terminal-title">Skip to terminal</a>
+  <header class="topbar">
+    <a class="brand" href="../" aria-label="Atlas home"><pre class="ascii-art" aria-hidden="true">@ATLAS_WORDMARK@</pre></a>
+    <span class="brand-label">terminal</span>
+    <span class="version" title="Atlas revision">@ATLAS_SHORT@</span>
+    <nav class="tool-nav" aria-label="Atlas tools"><a href="../docs/">Manual</a><a href="../resolution/">Resolution suite</a></nav>
+  </header>
+  <main class="terminal-page">
+    <div class="prose">
+      <h1 id="terminal-title" tabindex="-1">Atlas terminal</h1>
+      <p>Start a session to run the Atlas prompt in this browser. The first start downloads the runtime and can take a few minutes. Type <code>help</code> at the prompt to explore commands.</p>
+    </div>
+    <div class="terminal-controls">
+      <button type="button" id="start-terminal" aria-controls="terminal-screen">Start terminal</button>
+      <button type="button" id="stop-terminal" aria-controls="terminal-screen" hidden>Stop session</button>
+      <p role="status" id="runtime-status">Ready to start.</p>
+    </div>
+    <div id="terminal-screen" role="region" aria-label="Interactive Atlas terminal" hidden></div>
+    <noscript><p>Enable JavaScript to run the Atlas terminal.</p></noscript>
   </main>
 </body>
 </html>

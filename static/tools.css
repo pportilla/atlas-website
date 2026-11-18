@@ -1,0 +1,18 @@
+.tool-nav, .runtime-bar nav { display: flex; align-items: center; gap: 1.2rem; }
+.tool-nav { margin-left: auto; font: 500 .9rem/1.2 var(--font-mono); }
+.terminal-page { max-width: 76rem; margin: 0 auto; padding: clamp(1rem, 4.5vw, 4rem); }
+.terminal-controls, .runtime-bar { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem 1.2rem; }
+.terminal-controls { margin: 1.5rem 0 1rem; }
+.terminal-controls p, .runtime-bar p { margin: 0; color: var(--ink-soft); }
+.terminal-controls button { padding: .5rem 1rem; cursor: pointer; border: 1px solid var(--brand); border-radius: 4px; background: var(--brand); color: var(--paper); font: 600 .95rem/1.3 var(--font-text); }
+.terminal-controls button:disabled { opacity: .6; cursor: wait; }
+#stop-terminal { background: var(--surface); color: var(--brand); }
+#terminal-screen { height: clamp(18rem, 55vh, 44rem); border: 1px solid var(--rule-strong); padding: .75rem; border-radius: 6px; background: #12221f; }
+#terminal-screen .xterm { height: 100%; }
+.runtime-bar { justify-content: space-between; padding-block: .6rem 1rem; font-size: .95rem; }
+.runtime-bar nav { gap: .9rem; }
+@media (max-width: 520px) {
+  .tool-nav { font-size: .8rem; gap: .6rem; }
+  .terminal-page { padding: 1rem; }
+  .runtime-bar { align-items: flex-start; }
+}

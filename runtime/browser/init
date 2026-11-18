@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+export PATH=/bin:/usr/bin:/opt/atlas HOME=/tmp TERM=xterm-256color
+export LANG=C.UTF-8 PYTHONDONTWRITEBYTECODE=1 ATLAS_ROOT=/opt/atlas
+/bin/busybox mount -t proc proc /proc
+/bin/busybox mount -t sysfs sysfs /sys
+/bin/busybox mount -t devtmpfs devtmpfs /dev
+/bin/busybox mkdir -p /dev/pts /dev/shm
+/bin/busybox mount -t devpts devpts /dev/pts -o mode=620,ptmxmode=666
+/bin/busybox mount -t tmpfs tmpfs /dev/shm
+/bin/busybox ip link set lo up
+exec </dev/ttyS0 >/dev/ttyS0 2>&1
+cd /tmp
+exec /usr/bin/python3 -u /opt/atlas-guest/bridge.py

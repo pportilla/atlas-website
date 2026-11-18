@@ -1,8 +1,6 @@
 *
 !runtime/
 runtime/*
-!runtime/Dockerfile
-!runtime/jupyter_server_config.py
 !runtime/package-native.sh
-!runtime/requirements.txt
-!runtime/setup-runtime.sh
+!runtime/browser/
+!runtime/guest/

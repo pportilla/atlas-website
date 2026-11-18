@@ -4,15 +4,13 @@
 The article in static/index.html uses the upstream manual template and
 @ATLAS_MAP@ displays the same Atlas artwork as the manual. In static/ HTML
 files, @ATLAS_REVISION@ expands to the full checkout SHA,
-@ATLAS_SHORT@ to its first seven characters, and @TERMINAL_URL@ and
-@RESOLUTION_URL@ to the HTML-escaped runtime links. Install the Atlas checkout's
+@ATLAS_SHORT@ to its first seven characters, and @ATLAS_WORDMARK@ to the terminal wordmark. Install the Atlas checkout's
 requirements-docs.txt in this Python environment before running the build.
 
     python3 scripts/build_site.py --atlas ../atlas --out dist
 """
 import argparse
 from collections import defaultdict
-from html import escape
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -29,8 +27,6 @@ ATLAS_URL = "https://github.com/pportilla/atlas"
 SEARCH_ASSIGNMENT = "window.ATLAS_SEARCH = "
 BUILD_MARKER = ".atlas-website-output"
 UPSTREAM_LINK = re.compile(r"""(<a\b[^>]*?\shref=["']""" + re.escape(ATLAS_URL) + r"/(?:blob|tree)/)main/")
-TERMINAL_DEFAULT = "http://127.0.0.1:8888/atlas-terminal/"
-RESOLUTION_DEFAULT = "http://127.0.0.1:8888/atlas-resolution/"
 
 
 def revision_of(atlas):
@@ -38,19 +34,6 @@ def revision_of(atlas):
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError(f"Expected a GitHub commit SHA, got {sha!r}")
     return sha
-
-
-def runtime_url(value):
-    """Accept HTTPS and local development links for the runtime launch buttons."""
-    if not value or re.search(r"[\x00-\x20\x7f\\]", value) or value.startswith("//"):
-        raise ValueError(f"Invalid runtime URL: {value!r}")
-    parts = urlsplit(value)
-    if not parts.scheme and not parts.netloc:
-        return value
-    if parts.hostname and parts.username is None and parts.password is None:
-        if parts.scheme == "https" or (parts.scheme == "http" and parts.hostname in {"localhost", "127.0.0.1", "::1"}):
-            return value
-    raise ValueError("Choose an HTTPS, loopback HTTP, or relative runtime URL.")
 
 
 def pin_source_links(html, revision):
@@ -109,15 +92,36 @@ def prepare_manual(atlas, docs, revision):
     audit_search(docs)
 
 
-def prepare_home(atlas, site, revision):
-    """Render the website overview with the pinned manual's template and artwork."""
-    brand = subprocess.check_output(
-        [sys.executable, "-c",
-         "import json; from engine.web_brand import wordmark_html, lettered_map_html; "
-         "print(json.dumps([wordmark_html(), lettered_map_html()]))"],
-        cwd=atlas, text=True,
+def render_brand(atlas):
+    """Read the actual terminal and resolution artwork from the pinned checkout."""
+    command = (
+        "import json; from pathlib import Path; "
+        "from engine.web_brand import wordmark_html, lettered_map_html, fill_brand; "
+        "print(json.dumps([wordmark_html(), lettered_map_html(), fill_brand(Path('web/index.html').read_text())]))"
     )
-    wordmark, lettered_map = json.loads(brand)
+    return json.loads(subprocess.check_output([sys.executable, "-c", command], cwd=atlas, text=True))
+
+
+def prepare_resolution(atlas, site, upstream):
+    """Stage the upstream application and load the browser HTTP adapter before app.js."""
+    target = site / "resolution"
+    panel = (target / "index.html").read_text(encoding="utf-8")
+    shutil.copytree(atlas / "web", target, dirs_exist_ok=True)
+
+    def local_url(match):
+        relative = match["path"] or "../"
+        return f'{match["attr"]}="{relative}"'
+
+    page = re.sub(r'(?P<attr>href|src)="/(?P<path>[^"/][^"]*|)"', local_url, upstream)
+    hook = '<script src="../assets/resolution.js"></script>'
+    page = page.replace("</head>", '<link rel="stylesheet" href="../tools.css">\n</head>')
+    page = page.replace("<script ", hook + "\n  <script ", 1)
+    page = page.replace("</header>", "</header>\n" + panel, 1)
+    (target / "index.html").write_text(page, encoding="utf-8")
+
+
+def prepare_home(atlas, site, revision, wordmark, lettered_map):
+    """Render the website overview with the pinned manual's template and artwork."""
     template = (atlas / "docs/site/template.html").read_text(encoding="utf-8")
     template = template.replace('href="{{root}}index.html" aria-label="Atlas documentation home"',
                                 'href="./" aria-label="Atlas home"')
@@ -158,10 +162,8 @@ def prepare_home(atlas, site, revision):
     home_page.write_text(re.sub(r"\{\{(\w+)\}\}", lambda match: values[match[1]], template), encoding="utf-8")
 
 
-def build(atlas, out, terminal_url=TERMINAL_DEFAULT, resolution_url=RESOLUTION_DEFAULT):
+def build(atlas, out):
     atlas = atlas.resolve(strict=True)
-    terminal_url = runtime_url(terminal_url)
-    resolution_url = runtime_url(resolution_url)
     if out.is_symlink():
         raise ValueError(f"Choose an output directory instead of a symlink: {out}")
     out = out.resolve()
@@ -181,15 +183,16 @@ def build(atlas, out, terminal_url=TERMINAL_DEFAULT, resolution_url=RESOLUTION_D
         subprocess.run(["git", "checkout", "--quiet", "--detach", revision], cwd=source, check=True)
         site = Path(temp) / "site"
         shutil.copytree(ROOT / "static", site)
-        substitutions = {"@ATLAS_REVISION@": revision, "@ATLAS_SHORT@": revision[:7],
-                         "@TERMINAL_URL@": escape(terminal_url), "@RESOLUTION_URL@": escape(resolution_url)}
+        wordmark, lettered_map, resolution = render_brand(source)
+        substitutions = {"@ATLAS_REVISION@": revision, "@ATLAS_SHORT@": revision[:7], "@ATLAS_WORDMARK@": wordmark}
         for page in site.rglob("*.html"):
             html = page.read_text(encoding="utf-8")
             for token, value in substitutions.items():
                 html = html.replace(token, value)
             page.write_text(html, encoding="utf-8")
         prepare_manual(source, site / "docs", revision)
-        prepare_home(source, site, revision)
+        prepare_home(source, site, revision, wordmark, lettered_map)
+        prepare_resolution(source, site, resolution)
         (site / ".nojekyll").touch()
         (site / BUILD_MARKER).touch()
         # Stage in the destination filesystem so a failed compile preserves the previous site.
@@ -209,12 +212,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--atlas", type=Path, required=True, help="Atlas source checkout")
     parser.add_argument("--out", type=Path, required=True, help="generated website directory")
-    parser.add_argument("--terminal-url", type=runtime_url, default=TERMINAL_DEFAULT,
-                        help="URL that launches the Atlas terminal")
-    parser.add_argument("--resolution-url", type=runtime_url, default=RESOLUTION_DEFAULT,
-                        help="URL that launches the resolution suite")
     args = parser.parse_args()
-    revision = build(args.atlas, args.out, args.terminal_url, args.resolution_url)
+    revision = build(args.atlas, args.out)
     print(f"Built {args.out} from Atlas {revision}")
 
 

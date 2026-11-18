@@ -1,0 +1,31 @@
+Atlas browser runtime
+
+The Atlas native programs are built from the source revision in REVISION.
+The compressed initramfs contains Ubuntu 26.10 AMD64 CPython, BusyBox and
+the libraries loaded by Atlas. Package copyright notices are inside the
+guest under /usr/share/doc and common licenses under /usr/share/common-licenses.
+Ubuntu source packages are available at https://launchpad.net/ubuntu/stonking.
+
+The emulator, Linux kernel and PC firmware are redistributed from Kohei
+Tokunaga's QEMU Wasm demo images, commit b7c549b5e6f4c376f76483a03e983214421434ad.
+Their upstream files and build instructions are available here:
+https://github.com/ktock/qemu-wasm-demo-images/tree/b7c549b5e6f4c376f76483a03e983214421434ad/alpine-x86_64
+https://github.com/ktock/qemu-wasm-demo/blob/main/create-images.sh
+https://github.com/ktock/qemu-wasm
+
+QEMU is copyright Fabrice Bellard and the QEMU developers. QEMU as a
+whole is distributed under GNU GPL version 2. Source files identify the
+licenses of individual components. Emscripten worker glue is copyright
+the Emscripten Authors, MIT. The Linux 6.12.43-0-virt kernel from Alpine
+Linux is distributed under GPL-2.0-only with the Linux syscall note.
+Kernel source and distribution configuration are available here:
+https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.43.tar.xz
+https://gitlab.alpinelinux.org/alpine/aports/-/tree/3.21-stable/main/linux-lts
+
+Firmware is licensed by its respective projects. SeaBIOS (bios-256k.bin)
+reports release 1.16.3. The EFI network ROM comes from iPXE and the remaining
+PC BIOS files are distributed in QEMU's pc-bios directory. See its upstream
+index and the component source notices:
+https://www.seabios.org/
+https://ipxe.org/
+https://github.com/ktock/qemu-wasm/tree/master/pc-bios

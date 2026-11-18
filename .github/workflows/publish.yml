@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
-      contents: write
+      contents: read
       pages: read
     outputs:
       publish: ${{ steps.version.outputs.publish }}
@@ -34,18 +34,14 @@ jobs:
           path: upstream
           ssh-key: ${{ secrets.ATLAS_DEPLOY_KEY }}
           persist-credentials: false
-      - name: Identify the manual and runtime versions
+      - name: Identify the manual and runtime version
         id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           sha=$(git -C upstream rev-parse HEAD)
-          runtime=$(git rev-parse HEAD:runtime)
-          version="${sha:0:12}-${runtime:0:12}"
-          echo "ATLAS_SHA=$sha" >> "$GITHUB_ENV"
-          echo "RELEASE_TAG=atlas-$version" >> "$GITHUB_ENV"
-          echo "LAUNCH_TAG=launch-$version" >> "$GITHUB_ENV"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
           pages=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url)
           if [[ "$GITHUB_EVENT_NAME" == schedule ]] && \
              curl -fsSL "${pages%/}/version.json" | jq -e --arg a "$sha" --arg w "$GITHUB_SHA" '.atlas==$a and .website==$w' >/dev/null; then
@@ -53,49 +49,16 @@ jobs:
           else
             echo 'publish=true' >> "$GITHUB_OUTPUT"
           fi
-      - name: Check for a previously verified runtime
+      - uses: actions/setup-node@v6
         if: steps.version.outputs.publish == 'true'
-        id: bundle
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$RELEASE_TAG" --json assets,isDraft | jq -e '(.isDraft | not) and any(.assets[]; .name=="atlas-runtime.tar.gz")' >/dev/null; then
-            echo 'exists=true' >> "$GITHUB_OUTPUT"
-          fi
-      - name: Build the native runtime and exercise both browser tools
-        if: steps.version.outputs.publish == 'true' && steps.bundle.outputs.exists != 'true'
-        run: |
-          set -euo pipefail
-          mkdir "$RUNNER_TEMP/atlas-source"
-          git -C upstream archive "$ATLAS_SHA" | tar xf - -C "$RUNNER_TEMP/atlas-source"
-          docker buildx build --load -t atlas-runtime --build-context "atlas=$RUNNER_TEMP/atlas-source" \
-            --build-arg "ATLAS_REVISION=$ATLAS_SHA" -f runtime/Dockerfile .
-          python3 -m venv "$RUNNER_TEMP/smoke-env"
-          source "$RUNNER_TEMP/smoke-env/bin/activate"
-          pip install websocket-client
-          scripts/test_runtime.sh atlas-runtime
-          docker run --rm atlas-runtime tar czf - -C /opt atlas > "$RUNNER_TEMP/atlas-runtime.tar.gz"
-      - name: Release the tested Atlas runtime
-        if: steps.version.outputs.publish == 'true' && steps.bundle.outputs.exists != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --draft --title "Atlas ${ATLAS_SHA:0:12}" \
-              --notes "Native Linux runtime for Atlas $ATLAS_SHA. The website uses this archive to start personal Binder sessions."
-          fi
-          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/atlas-runtime.tar.gz" --clobber
-          gh release edit "$RELEASE_TAG" --draft=false
-      - name: Publish the immutable Binder recipe
-        if: steps.version.outputs.publish == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: scripts/launch_recipe.sh
-      - name: Compile and test the manual from the same Atlas revision
+        with:
+          node-version: 22
+          cache: npm
+      - name: Compile and verify the website and documentation
         if: steps.version.outputs.publish == 'true'
         env:
           ATLAS_CHECKOUT: ${{ github.workspace }}/upstream
+          ATLAS_SHA: ${{ steps.version.outputs.sha }}
         run: |
           set -euo pipefail
           python3 -m venv "$RUNNER_TEMP/docs-env"
@@ -103,12 +66,39 @@ jobs:
           pip install -r upstream/requirements-docs.txt
           (cd upstream && python3 -m unittest tests.test_docs_site)
           python3 -m unittest discover -s tests
-          base="https://mybinder.org/v2/gh/$GITHUB_REPOSITORY/$LAUNCH_TAG"
-          python3 scripts/build_site.py --atlas upstream --out dist \
-            --terminal-url "$base?urlpath=atlas-terminal%2F" --resolution-url "$base?urlpath=atlas-resolution%2F"
-          jq -n --arg a "$ATLAS_SHA" --arg w "$GITHUB_SHA" --arg l "$LAUNCH_TAG" \
-            '{atlas:$a, website:$w, launch:$l}' > dist/version.json
-      - uses: actions/upload-pages-artifact@v4
+          python3 scripts/build_site.py --atlas upstream --out dist
+          npm ci
+          npm run check
+          npm run build
+          jq -n --arg a "$ATLAS_SHA" --arg w "$GITHUB_SHA" '{atlas:$a, website:$w}' > dist/version.json
+      - name: Restore the browser runtime for this exact Atlas revision
+        if: steps.version.outputs.publish == 'true'
+        id: vm
+        uses: actions/cache@v5
+        with:
+          path: dist/vm
+          key: browser-vm-${{ steps.version.outputs.sha }}-${{ hashFiles('runtime/**', '.dockerignore') }}
+      - name: Package the native Atlas binaries and WebAssembly emulator
+        if: steps.version.outputs.publish == 'true' && steps.vm.outputs.cache-hit != 'true'
+        env:
+          ATLAS_SHA: ${{ steps.version.outputs.sha }}
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/atlas-source"
+          git -C upstream archive "$ATLAS_SHA" | tar xf - -C "$RUNNER_TEMP/atlas-source"
+          docker buildx build --build-context "atlas=$RUNNER_TEMP/atlas-source" --build-arg "ATLAS_REVISION=$ATLAS_SHA" \
+            -f runtime/browser/Dockerfile --output type=local,dest=dist/vm .
+          python3 runtime/browser/fetch_emulator.py dist/vm
+      - name: Test both tools in a browser against static files alone
+        if: steps.version.outputs.publish == 'true'
+        env:
+          ATLAS_SHA: ${{ steps.version.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(cat dist/vm/REVISION)" = "$ATLAS_SHA"
+          npx playwright install --with-deps chromium
+          npm run test:browser
+      - uses: actions/upload-pages-artifact@v5
         if: steps.version.outputs.publish == 'true'
         with:
           path: dist
