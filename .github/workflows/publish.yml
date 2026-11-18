@@ -1,0 +1,129 @@
+name: Publish Atlas
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-atlas
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pages: read
+    outputs:
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check out the current Atlas main revision
+        uses: actions/checkout@v6
+        with:
+          repository: pportilla/atlas
+          ref: main
+          path: upstream
+          ssh-key: ${{ secrets.ATLAS_DEPLOY_KEY }}
+          persist-credentials: false
+      - name: Identify the manual and runtime versions
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha=$(git -C upstream rev-parse HEAD)
+          runtime=$(git rev-parse HEAD:runtime)
+          version="${sha:0:12}-${runtime:0:12}"
+          echo "ATLAS_SHA=$sha" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=atlas-$version" >> "$GITHUB_ENV"
+          echo "LAUNCH_TAG=launch-$version" >> "$GITHUB_ENV"
+          pages=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url)
+          if [[ "$GITHUB_EVENT_NAME" == schedule ]] && \
+             curl -fsSL "${pages%/}/version.json" | jq -e --arg a "$sha" --arg w "$GITHUB_SHA" '.atlas==$a and .website==$w' >/dev/null; then
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'publish=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check for a previously verified runtime
+        if: steps.version.outputs.publish == 'true'
+        id: bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" --json assets,isDraft | jq -e '(.isDraft | not) and any(.assets[]; .name=="atlas-runtime.tar.gz")' >/dev/null; then
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build the native runtime and exercise both browser tools
+        if: steps.version.outputs.publish == 'true' && steps.bundle.outputs.exists != 'true'
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/atlas-source"
+          git -C upstream archive "$ATLAS_SHA" | tar xf - -C "$RUNNER_TEMP/atlas-source"
+          docker buildx build --load -t atlas-runtime --build-context "atlas=$RUNNER_TEMP/atlas-source" \
+            --build-arg "ATLAS_REVISION=$ATLAS_SHA" -f runtime/Dockerfile .
+          python3 -m venv "$RUNNER_TEMP/smoke-env"
+          source "$RUNNER_TEMP/smoke-env/bin/activate"
+          pip install websocket-client
+          scripts/test_runtime.sh atlas-runtime
+          docker run --rm atlas-runtime tar czf - -C /opt atlas > "$RUNNER_TEMP/atlas-runtime.tar.gz"
+      - name: Release the tested Atlas runtime
+        if: steps.version.outputs.publish == 'true' && steps.bundle.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --draft --title "Atlas ${ATLAS_SHA:0:12}" \
+              --notes "Native Linux runtime for Atlas $ATLAS_SHA. The website uses this archive to start personal Binder sessions."
+          fi
+          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/atlas-runtime.tar.gz" --clobber
+          gh release edit "$RELEASE_TAG" --draft=false
+      - name: Publish the immutable Binder recipe
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/launch_recipe.sh
+      - name: Compile and test the manual from the same Atlas revision
+        if: steps.version.outputs.publish == 'true'
+        env:
+          ATLAS_CHECKOUT: ${{ github.workspace }}/upstream
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/docs-env"
+          source "$RUNNER_TEMP/docs-env/bin/activate"
+          pip install -r upstream/requirements-docs.txt
+          (cd upstream && python3 -m unittest tests.test_docs_site)
+          python3 -m unittest discover -s tests
+          base="https://mybinder.org/v2/gh/$GITHUB_REPOSITORY/$LAUNCH_TAG"
+          python3 scripts/build_site.py --atlas upstream --out dist \
+            --terminal-url "$base?urlpath=atlas-terminal%2F" --resolution-url "$base?urlpath=atlas-resolution%2F"
+          jq -n --arg a "$ATLAS_SHA" --arg w "$GITHUB_SHA" --arg l "$LAUNCH_TAG" \
+            '{atlas:$a, website:$w, launch:$l}' > dist/version.json
+      - uses: actions/upload-pages-artifact@v4
+        if: steps.version.outputs.publish == 'true'
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    steps:
+      - name: Deploy the site
+        id: publish
+        uses: actions/deploy-pages@v5

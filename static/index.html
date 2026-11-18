@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f7f7f0">
+  <meta name="description" content="The Atlas manual, interactive algebra terminal, and resolution workspace.">
+  <title>Atlas · Algebra and resolution of singularities</title>
+  <link rel="icon" href="assets/atlas-mark.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header>
+    <div class="wrap masthead">
+      <a class="brand" href="./"><img src="assets/atlas-mark.svg" width="32" height="32" alt=""> Atlas</a>
+      <nav aria-label="Main">
+        <a href="docs/">Manual</a><a href="@TERMINAL_URL@">Terminal</a><a href="@RESOLUTION_URL@">Resolution suite</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="wrap">
+    <section class="hero" aria-labelledby="title">
+      <div class="introduction">
+        <h1 id="title">Atlas</h1>
+        <p class="subtitle">Algebra and resolution<br>of singularities.</p>
+        <p class="description">Compute with polynomial rings, ideals, and hypersurface germs. Explore exceptional divisors, charts, and their intersections.</p>
+      </div>
+      <figure class="plate">
+        <svg viewBox="0 0 500 268" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A plane cusp with two real arcs meeting at the origin and opening to the right">
+          <defs>
+            <pattern id="grid" x="95" y="134" width="30" height="30" patternUnits="userSpaceOnUse">
+              <path d="M30 0H0V30" fill="none" stroke="#bfd0c6" stroke-width=".8"/>
+            </pattern>
+            <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="m1 1 4 2-4 2" fill="none" stroke="#637d72"/></marker>
+          </defs>
+          <rect width="500" height="268" fill="url(#grid)"/>
+          <g stroke="#738a7f" stroke-width="1" marker-end="url(#arrow)">
+            <path d="M25 134H481"/><path d="M95 246V15"/>
+          </g>
+          <g fill="#496458" font-family="Georgia,serif" font-size="16" font-style="italic">
+            <text x="471" y="154">x</text><text x="78" y="21">y</text><text x="79" y="151">0</text>
+          </g>
+          <!-- Two cubic Bezier arcs share their horizontal tangent at the singular point. -->
+          <path d="M390 17 C193.333 134 95 134 95 134 C95 134 193.333 134 390 251" fill="none" stroke="#146c66" stroke-width="3.3" stroke-linecap="round"/>
+          <circle cx="95" cy="134" r="4.2" stroke="#f5f7ee" stroke-width="1.4" fill="#ad573b"/>
+        </svg>
+        <figcaption><span>Plane cusp</span><span class="formula">y² = x³</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="tools" aria-label="Atlas tools">
+      <article>
+        <div class="tool-icon" aria-hidden="true">§</div>
+        <h2>Documentation</h2>
+        <p>Read worked examples and look up functions, arguments, and return values in the Atlas manual.</p>
+        <a class="action" href="docs/">Read the manual <span aria-hidden="true">→</span></a>
+      </article>
+      <article>
+        <div class="tool-icon terminal-icon" aria-hidden="true">›_</div>
+        <h2>Atlas terminal</h2>
+        <p>Declare coordinates and evaluate expressions in a live session with the native Atlas kernel.</p>
+        <a class="action" href="@TERMINAL_URL@">Launch terminal <span aria-hidden="true">↗</span></a>
+      </article>
+      <article>
+        <div class="tool-icon" aria-hidden="true"><svg viewBox="0 0 36 30" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 22 11-15 14 15"/><g fill="var(--paper)"><circle cx="6" cy="22" r="3.2"/><circle cx="17" cy="7" r="3.2"/><circle cx="31" cy="22" r="3.2"/></g></svg></div>
+        <h2>Resolution suite</h2>
+        <p>Resolve a polynomial, follow the search, and inspect the resulting charts and dual complex.</p>
+        <a class="action" href="@RESOLUTION_URL@">Launch suite <span aria-hidden="true">↗</span></a>
+      </article>
+    </section>
+    <p class="runtime-note">Hosted tools open a temporary Binder session. The first launch may take a few minutes. Download any results you want to keep.</p>
+
+    <section class="example" aria-labelledby="example-title">
+      <div>
+        <h2 id="example-title">Resolve a plane cusp</h2>
+        <p>Follow one branch through three blowups and see where it meets the exceptional divisor.</p>
+        <a class="text-link" href="docs/docs/resolving-a-cusp.html">Follow the worked example <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="transcript" aria-label="Example session"><pre><code><span class="prompt">atlas&gt;</span> x, y = coordinates("x", "y")
+<span class="prompt">atlas&gt;</span> K = resolve(y^2 - x^3)
+<span class="prompt">atlas&gt;</span> K.branches[0].meets
+<span class="output">[E3]</span></code></pre></div>
+    </section>
+  </main>
+  <footer><div class="wrap footer-inner"><span>Atlas <span class="revision">@ATLAS_SHORT@</span></span><a href="https://github.com/pportilla/atlas-website">Website repository <span aria-hidden="true">↗</span></a></div></footer>
+</body>
+</html>
