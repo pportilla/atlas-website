@@ -3,6 +3,8 @@ import { launchMachine, serialPort } from "./emulator";
 const notify = (message: object) => self.postMessage(message);
 const decoder = new TextDecoder();
 let line = "";
+let resumed = false;
+let handshake: ReturnType<typeof setInterval> | undefined;
 const serial = serialPort(bytes => {
   const chunk = decoder.decode(Uint8Array.from(bytes), { stream: true });
   let begin = 0;
@@ -13,7 +15,20 @@ const serial = serialPort(bytes => {
     begin = end + 1;
     if (frame.startsWith("ATLAS1 ")) {
       const message = JSON.parse(frame.slice(7));
-      if (message.type !== "hello" || message.resumed === true) notify(message);
+      if (!resumed) {
+        // The UART may contain a partial line while QEMU restores its registers.
+        // Re-synchronize the stream with the next handshake, before exposing it.
+        if (message.type === "hello" && message.resumed === true) {
+          resumed = true;
+          clearInterval(handshake);
+          notify(message);
+        } else if (message.type === "error" && /random|entropy|permission/i.test(message.message)) {
+          clearInterval(handshake);
+          notify(message);
+        }
+      } else if (message.type !== "hello") {
+        notify(message);
+      }
     } else if (/Kernel panic|Attempted to kill init/.test(frame)) {
       notify({ type: "error", message: "The local Atlas system could not boot: " + frame.trim() });
     }
@@ -36,7 +51,9 @@ async function boot(base: string): Promise<void> {
   // The snapshot is paused after the guest's unsolicited hello, before opening
   // either tool. Ask the live guest to acknowledge this browser's fresh session.
   const entropy = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
-  send({ type: "hello", entropy });
+  const probe = () => send({ type: "hello", entropy });
+  handshake = setInterval(probe, 750);
+  probe();
 }
 
 self.onmessage = ({ data }) => {

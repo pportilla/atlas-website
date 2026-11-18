@@ -26,8 +26,7 @@ async function capture(base: string, revision: string): Promise<void> {
   // No user input or mathematical session has been created at this point.
   serial.write("\x01c");
   await expect(/\(qemu\) /, 10_000);
-  serial.write("migrate file:/pristine.state\r");
-  await expect(/\(qemu\) /, 120_000);
+  serial.write("migrate -d file:/pristine.state\r");
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
     serial.write("info migrate\r");

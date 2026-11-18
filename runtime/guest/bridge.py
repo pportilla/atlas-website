@@ -181,7 +181,10 @@ class Resolution:
         self.pool.submit(self.request, ident, method, path, body)
 
     def request(self, ident, method, path, body):
-        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=180)
+        # Atlas deliberately allows a zeta replay to keep computing until it
+        # finishes. Leave its loopback request open for the lifetime of the VM.
+        timeout = None if method == "POST" and path.endswith("/zetas") else 180
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=timeout)
         try:
             conn.request(method, path, body=body if method == "POST" else None,
                          headers={"Content-Type": "application/json"} if method == "POST" else {})
