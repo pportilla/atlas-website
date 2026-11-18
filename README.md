@@ -1,6 +1,6 @@
 # Atlas website
 
-[Open the Atlas website](https://pportilla.github.io/atlas-website/) for the full searchable manual, an interactive Atlas terminal, and the resolution suite.
+[Open the Atlas website](https://pportilla.github.io/atlas-website/) for the [full searchable manual](https://pportilla.github.io/atlas-website/docs/), [interactive terminal](https://pportilla.github.io/atlas-website/terminal/), and [resolution suite](https://pportilla.github.io/atlas-website/resolution/). The three site addresses stay the same across Atlas updates.
 
 GitHub Pages serves the website and manual. Opening either live tool starts a personal Linux session on Binder. The terminal runs the Atlas executable in a real terminal. The resolution suite runs the original Atlas web app and search workers. Sessions are temporary and a cold start can take several minutes. Use **Download JSON** in the suite to keep a resolution record.
 
