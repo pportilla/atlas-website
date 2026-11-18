@@ -1,10 +1,11 @@
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from urllib.parse import unquote, urlsplit
 
 from scripts import build_site
 
@@ -46,32 +47,68 @@ class ManualLinksTests(unittest.TestCase):
                 build_site.audit_search(docs)
 
 
+class PageLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.urls = []
+        self.ids = set()
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if "id" in attrs:
+            self.ids.add(attrs["id"])
+        for name in ("href", "src"):
+            if name in attrs:
+                self.urls.append(attrs[name])
+
+
 @unittest.skipUnless((ATLAS / "docs/site/build.py").is_file(), "Set ATLAS_CHECKOUT to run the manual integration test")
 class BuildTests(unittest.TestCase):
     def test_build_and_rebuild_same_output(self):
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ATLAS, text=True).strip()
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            sources = root / "static"
-            sources.mkdir()
-            (sources / "index.html").write_text('@ATLAS_REVISION@ @ATLAS_SHORT@ '
-                                                '<a href="@TERMINAL_URL@">Terminal</a> '
-                                                '<a href="@RESOLUTION_URL@">Suite</a>')
-            out = root / "public"
-            with patch.object(build_site, "ROOT", root):
-                build_site.build(ATLAS, out)
-                kernel = out / "docs/source/native/groebner.cpp.html"
-                self.assertIn('<a href="../../../index.html">Atlas website</a>', kernel.read_text())
-                self.assertTrue((kernel.parent / "../../../index.html").is_file())
-                self.assertIn(build_site.TERMINAL_DEFAULT, (out / "index.html").read_text())
-                build_site.build(ATLAS, out, terminal_url="https://example.com/app?a=1&b=2",
-                                 resolution_url="./suite/")
-            self.assertEqual((out / "index.html").read_text(),
-                             f'{sha} {sha[:7]} <a href="https://example.com/app?a=1&amp;b=2">Terminal</a> '
-                             '<a href="./suite/">Suite</a>')
-            self.assertTrue((out / "assets/atlas-mark.svg").is_file())
-            self.assertTrue((out / "assets/fonts/source-code-pro.woff2").is_file())
-            self.assertTrue((out / "docs/_static/search-index.js").is_file())
+            out = Path(temp) / "public"
+            build_site.build(ATLAS, out)
+            kernel = out / "docs/source/native/groebner.cpp.html"
+            self.assertIn('<a href="../../../index.html">Atlas website</a>', kernel.read_text())
+            self.assertTrue((kernel.parent / "../../../index.html").is_file())
+            self.assertIn(build_site.TERMINAL_DEFAULT, (out / "terminal/index.html").read_text())
+            build_site.build(ATLAS, out, terminal_url="https://example.com/app?a=1&b=2", resolution_url="./suite/")
+            self.assertIn('href="https://example.com/app?a=1&amp;b=2"', (out / "terminal/index.html").read_text())
+            self.assertIn('href="./suite/"', (out / "resolution/index.html").read_text())
+
+            home = (out / "index.html").read_text()
+            self.assertEqual(home.lower().count("<!doctype html>"), 1)
+            self.assertEqual(home.count('<article class="prose">'), 1)
+            self.assertIn('<body data-root="docs/">', home)
+            self.assertIn('href="./" aria-label="Atlas home"', home)
+            self.assertIn('<span class="brand-label">home</span>', home)
+            self.assertIn(f'title="Version">{sha[:7]}</span>', home)
+            self.assertIn('class="theme-toggle"', home)
+            self.assertIn('localStorage.getItem("atlas-theme")', home)
+            for name in ("atlas-mark.svg", "identity.css", "docs.css", "docs.js", "search-index.js"):
+                self.assertIn(f'"docs/_static/{name}"', home)
+            self.assertFalse((out / "assets/fonts").exists())
+            self.assertFalse((out / "assets/atlas-mark.svg").exists())
+            self.assertNotRegex(home, r"@[A-Z_]+@|\{\{\w+\}\}")
+            self.assertIn('<span class="t-paper">', home)
+            self.assertIn('<span class="t-brand">', home)
+            links = PageLinks()
+            links.feed(home)
+            self.assertTrue({"search", "search-results", "sidebar", "plane-cusp", "work-with-atlas"} <= links.ids)
+            for url in links.urls:
+                parsed = urlsplit(url)
+                if parsed.netloc or parsed.scheme:
+                    continue
+                target = out / unquote(parsed.path)
+                if target.is_dir():
+                    target = target / "index.html"
+                with self.subTest(url=url):
+                    self.assertTrue(target.is_file())
+                    if parsed.fragment:
+                        anchors = PageLinks()
+                        anchors.feed(target.read_text())
+                        self.assertIn(unquote(parsed.fragment), anchors.ids)
             guide = (out / "docs/docs/lean-verification-roadmap.html").read_text()
             self.assertIn('<a href="../../index.html">Atlas website</a>', guide)
             self.assertIn('<a href="../index.html">Atlas website</a>', (out / "docs/index.html").read_text())

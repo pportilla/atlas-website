@@ -12,6 +12,8 @@ The workflow builds and tests the native runtime when Atlas or its runtime packa
 
 GitHub Pages must use **GitHub Actions** as its publishing source. While the Atlas repository is private, the website's Actions secret `ATLAS_DEPLOY_KEY` supplies a read-only deploy key scoped to that repository. Public website output includes the full manual with linked implementation and test listings. The runtime archive contains the Python engine, web assets, and compiled native binaries. It contains no Git checkout. When Atlas becomes public, remove the deploy key from both repositories and delete the `ssh-key` setting in the workflow to switch to an anonymous source checkout.
 
+The homepage uses the manual’s page template, typography, search index, theme controls, and ASCII artwork from the same Atlas revision. Edit the homepage article in `static/index.html`.
+
 ## Build the site locally
 
 Keep the two repositories in sibling directories. From the website checkout, run:

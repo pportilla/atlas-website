@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Build the Atlas website from a website template and an Atlas git checkout.
 
-In static/ HTML files, @ATLAS_REVISION@ expands to the full checkout SHA,
+The article in static/index.html uses the upstream manual template and
+@ATLAS_MAP@ displays the same Atlas artwork as the manual. In static/ HTML
+files, @ATLAS_REVISION@ expands to the full checkout SHA,
 @ATLAS_SHORT@ to its first seven characters, and @TERMINAL_URL@ and
 @RESOLUTION_URL@ to the HTML-escaped runtime links. Install the Atlas checkout's
 requirements-docs.txt in this Python environment before running the build.
@@ -107,6 +109,55 @@ def prepare_manual(atlas, docs, revision):
     audit_search(docs)
 
 
+def prepare_home(atlas, site, revision):
+    """Render the website overview with the pinned manual's template and artwork."""
+    brand = subprocess.check_output(
+        [sys.executable, "-c",
+         "import json; from engine.web_brand import wordmark_html, lettered_map_html; "
+         "print(json.dumps([wordmark_html(), lettered_map_html()]))"],
+        cwd=atlas, text=True,
+    )
+    wordmark, lettered_map = json.loads(brand)
+    template = (atlas / "docs/site/template.html").read_text(encoding="utf-8")
+    template = template.replace('href="{{root}}index.html" aria-label="Atlas documentation home"',
+                                'href="./" aria-label="Atlas home"')
+    template = template.replace('<span class="brand-label">docs</span>', '<span class="brand-label">home</span>')
+    home_page = site / "index.html"
+    article = home_page.read_text(encoding="utf-8").replace("@ATLAS_MAP@", lettered_map)
+
+    manual = ("Manual", "docs/")
+    tools = (("Terminal", "terminal/"), ("Resolution suite", "resolution/"))
+    groups = {
+        "Workspace": (("Overview", "./"), *tools),
+        "Documentation": (manual, ("Function reference", "docs/reference/functions.html"),
+                          ("Alphabetical index", "docs/genindex.html")),
+        "Worked guides": (("Resolve a plane cusp", "docs/docs/resolving-a-cusp.html"),
+                          ("Quotient algebras", "docs/examples/quotient-algebras.html"),
+                          ("Local geometry", "docs/examples/local-geometry.html")),
+    }
+    sidebar = []
+    for title, links in groups.items():
+        items = []
+        for label, href in links:
+            current = ' aria-current="page"' if href == "./" else ""
+            items.append(f'<li><a href="{href}"{current}>{label}</a></li>')
+        sidebar.append(f'<div class="nav-group"><h2>{title}</h2><ul>{"".join(items)}</ul></div>')
+    toc = ('<h2>On this page</h2><ul>'
+           '<li><a class="level-2" href="#work-with-atlas">Work with Atlas</a></li>'
+           '<li><a class="level-2" href="#plane-cusp">Resolve a plane cusp</a></li></ul>')
+    values = {
+        "title": "Atlas · Algebra and resolution of singularities",
+        "head": '<meta name="description" content="The Atlas manual, interactive terminal and resolution suite.">',
+        "root": "docs/", "wordmark": wordmark, "version": revision[:7],
+        "topnav": "".join(f'<a href="{href}">{label}</a>' for label, href in (manual, *tools)),
+        "sidebar": "".join(sidebar), "toc": toc, "pager": "",
+        "content": f'<details class="toc-inline"><summary>On this page</summary>{toc}</details>\n{article}',
+        "footer": f'<a href="{ATLAS_URL}/tree/{revision}">Atlas source</a> · '
+                  '<a href="https://github.com/pportilla/atlas-website">Website repository</a>',
+    }
+    home_page.write_text(re.sub(r"\{\{(\w+)\}\}", lambda match: values[match[1]], template), encoding="utf-8")
+
+
 def build(atlas, out, terminal_url=TERMINAL_DEFAULT, resolution_url=RESOLUTION_DEFAULT):
     atlas = atlas.resolve(strict=True)
     terminal_url = runtime_url(terminal_url)
@@ -137,10 +188,8 @@ def build(atlas, out, terminal_url=TERMINAL_DEFAULT, resolution_url=RESOLUTION_D
             for token, value in substitutions.items():
                 html = html.replace(token, value)
             page.write_text(html, encoding="utf-8")
-        assets = site / "assets"
-        shutil.copytree(source / "web/fonts", assets / "fonts")
-        shutil.copy2(source / "web/atlas-mark.svg", assets / "atlas-mark.svg")
         prepare_manual(source, site / "docs", revision)
+        prepare_home(source, site, revision)
         (site / ".nojekyll").touch()
         (site / BUILD_MARKER).touch()
         # Stage in the destination filesystem so a failed compile preserves the previous site.
