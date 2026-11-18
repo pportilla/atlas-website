@@ -59,6 +59,20 @@ def decode(data, limit):
     return raw
 
 
+def resume_guest(frame):
+    entropy = decode(frame.get("entropy"), 32)
+    if len(entropy) != 32:
+        raise ValueError("Resuming requires 32 bytes of fresh browser randomness.")
+    # The initramfs launches this process as PID 1. Reseed its cloned kernel
+    # before starting Atlas. Standalone bridge tests share the host's kernel.
+    if os.getpid() == 1:
+        with open("/dev/urandom", "wb", buffering=0) as rng:
+            # linux/random.h: RNDADDENTROPY takes two ints and the random bytes.
+            fcntl.ioctl(rng, 0x40085203, struct.pack("=ii32s", 256, 32, entropy))
+            fcntl.ioctl(rng, 0x5207)  # RNDRESEEDCRNG
+    send("hello", version=1, resumed=True)
+
+
 def dimensions(frame):
     cols, rows = frame.get("cols", 80), frame.get("rows", 24)
     if not all(type(value) is int and 1 <= value <= 1000 for value in (cols, rows)):
@@ -122,7 +136,10 @@ class Terminal:
 class Resolution:
     def __init__(self):
         self.process = subprocess.Popen([ATLAS, "serve", "--port", "0"], stdin=subprocess.DEVNULL,
-                                        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.recent_log = b""
+        self.log_reader = threading.Thread(target=self.read_log, daemon=True)
+        self.log_reader.start()
         try:
             if not select.select([self.process.stdout], [], [], 120)[0]:
                 raise RuntimeError("Timed out starting the Atlas resolution service.")
@@ -131,11 +148,20 @@ class Resolution:
             if not bound:
                 raise RuntimeError("Atlas could not start its local resolution service.")
             self.port = int(bound[1])
-        except BaseException:
+        except BaseException as exc:
             self.stop_process()
+            if self.recent_log and isinstance(exc, (RuntimeError, OSError)):
+                diagnostic = self.recent_log.decode("utf-8", errors="replace").strip()
+                raise RuntimeError(f"{exc} {diagnostic}") from exc
             raise
         self.pool = ThreadPoolExecutor(max_workers=3)
         self.slots = threading.BoundedSemaphore(6)
+
+    def read_log(self):
+        # Keep diagnostics available if startup fails. The server also writes an
+        # access log during successful sessions, so drain it with bounded storage.
+        while chunk := self.process.stderr.read1(2048):
+            self.recent_log = (self.recent_log + chunk)[-2048:]
 
     def dispatch(self, frame):
         if frame["type"] != "http":
@@ -151,7 +177,7 @@ class Resolution:
         if method != "POST" and body:
             raise ValueError("Only POST accepts a request body.")
         if not self.slots.acquire(blocking=False):
-            raise ValueError("Too many pending resolution requests.")
+            raise RuntimeError("Too many pending resolution requests.")
         self.pool.submit(self.request, ident, method, path, body)
 
     def request(self, ident, method, path, body):
@@ -168,7 +194,10 @@ class Resolution:
             send("response", id=ident, status=response.status, body=encode(data),
                  contentType=response.getheader("Content-Type", "application/json"))
         except (OSError, http.client.HTTPException, ValueError) as exc:
-            send("error", id=ident, message=str(exc))
+            if self.process.poll() is not None:
+                send("error", id=ident, fatal=True, message="The local Atlas resolution service stopped.")
+            else:
+                send("error", id=ident, message=str(exc), permanent=isinstance(exc, ValueError))
         finally:
             conn.close()
             self.slots.release()
@@ -181,6 +210,9 @@ class Resolution:
             self.process.kill()
             self.process.wait()
         self.process.stdout.close()
+        self.log_reader.join(timeout=2)
+        if not self.log_reader.is_alive():
+            self.process.stderr.close()
 
     def close(self):
         self.stop_process()
@@ -200,6 +232,7 @@ def main():
     try:
         # Start on a new line even if the emulator printed a partial boot message.
         sys.stdout.buffer.write(b"\n")
+        sys.stdout.buffer.flush()
         send("hello", version=1)
         stream = sys.stdin.buffer
         while line := stream.readline(MAX_FRAME + 1):
@@ -217,6 +250,9 @@ def main():
                 if type(frame.get("id")) is int and 0 <= frame["id"] < 2**53:
                     ident["id"] = frame["id"]
                 if service is None:
+                    if frame["type"] == "hello":
+                        resume_guest(frame)
+                        continue
                     if frame["type"] != "init" or frame.get("role") not in ("terminal", "resolution"):
                         raise ValueError("Initialize a terminal or resolution VM first.")
                     role = frame["role"]
@@ -227,7 +263,7 @@ def main():
                 else:
                     service.dispatch(frame)
             except (OSError, ValueError, RuntimeError, RecursionError) as exc:
-                send("error", message=str(exc), **ident)
+                send("error", message=str(exc), permanent=isinstance(exc, ValueError), **ident)
     finally:
         if service is not None:
             service.close()

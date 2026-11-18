@@ -4,13 +4,17 @@
 
 Both tools run on the visitor’s computer. When you start the terminal or submit a polynomial, the browser downloads a precompiled Atlas runtime and boots it in a Web Worker. It needs a recent desktop browser with WebAssembly threads, JavaScript, and enough memory for a Linux guest. The manual is available immediately. Closing the tab ends the session. Use **Download JSON** to keep a resolution record.
 
+## Run the precompiled tools offline
+
+[Download atlas-local.zip](https://github.com/pportilla/atlas-website/releases/latest/download/atlas-local.zip), extract it, and run `python3 start.py` from the extracted directory (on Windows, `py start.py`). A browser tab opens the local site. Press Ctrl+C in the terminal to stop serving it. The terminal and resolution suite work offline. The upstream manual uses a CDN for typeset mathematics and diagrams.
+
 ## How it works
 
 GitHub Pages serves static files. The homepage shares the manual’s template, typography, artwork, search, and theme controls. Its article is in `static/index.html`.
 
 The TypeScript interface connects to the real Atlas prompt or the resolution HTTP server over a serial connection to a Linux guest. The website uses the upstream resolution interface and the native C++ binaries compiled from the same Atlas revision as the manual. The guest’s only network interface is its own loopback. Calculations and terminal input stay in the tab.
 
-A project-scoped service worker supplies the isolation headers needed for WebAssembly threads on GitHub Pages. The first visit to a tool reloads it once. Self-host with HTTPS or use localhost. The packaged emulator, kernel, and ROM files are pinned by content digest in `runtime/browser/fetch_emulator.py`.
+A project-scoped service worker supplies the isolation headers needed for WebAssembly threads on GitHub Pages. The first visit to a tool reloads it once. Self-host with HTTPS or use localhost. A snapshot of the booted guest reduces startup time. A new session starts from the same clean state on each visit. The packaged emulator, kernel, and ROM files are pinned by content digest in `runtime/browser/fetch_emulator.py`.
 
 ## Automatic publication
 
@@ -43,6 +47,8 @@ docker buildx build --platform linux/amd64 --build-context "atlas=$atlas_source"
   --build-arg "ATLAS_REVISION=$atlas_revision" -f runtime/browser/Dockerfile \
   --output type=local,dest=dist/vm .
 python3 runtime/browser/fetch_emulator.py dist/vm
+npx playwright install chromium
+node runtime/browser/snapshot.mjs dist/vm
 python3 -m http.server 8000 --bind 127.0.0.1 --directory dist
 ```
 

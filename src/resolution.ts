@@ -1,4 +1,4 @@
-import { AtlasRuntime } from "./runtime";
+import { AtlasRuntime, PermanentRequestError } from "./runtime";
 
 // Install before app.js. Its exact JSON codec reads the original HTTP bytes from the guest.
 const fetchStatic = window.fetch.bind(window);
@@ -47,6 +47,10 @@ window.fetch = async (input, init) => {
     : url.pathname;
   if (!path.startsWith("/api/")) return fetchStatic(input, init);
   const request = new Request(input, init);
+  const job = request.method === "GET" && /^\/api\/searches\/([0-9a-f]{32})$/.exec(path);
+  if (job && !session) {
+    return Response.json({ error: "The Atlas session that owned this search has ended." }, { status: 404 });
+  }
   // Upstream restores history on load. A fresh tab can show the workspace before
   // downloading the guest. An addressed polynomial or the first submission releases this read.
   if (!starting && request.method === "GET" && path === "/api/searches"
@@ -56,7 +60,16 @@ window.fetch = async (input, init) => {
   const runtime = await getSession();
   request.signal.throwIfAborted();
   const body = request.body ? new Uint8Array(await request.arrayBuffer()) : undefined;
-  return runtime.request(request.method, path + url.search, body);
+  try {
+    return await runtime.request(request.method, path + url.search, body);
+  } catch (error) {
+    if (error instanceof PermanentRequestError && job) {
+      // Native jobs outlive transient I/O errors. An untransferable result
+      // cannot improve on retry; give the workspace its terminal failed state.
+      return Response.json({ id: job[1], state: "failed", error: error.message });
+    }
+    throw error;
+  }
 };
 
 window.addEventListener("pagehide", (event) => {

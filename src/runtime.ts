@@ -3,6 +3,9 @@ type Reply = { resolve: (response: Response) => void; reject: (error: Error) => 
 
 const root = new URL("../", document.baseURI);
 const storageKey = "atlas-isolation-reload";
+const maxRequestBytes = 8 * 1024 * 1024; // Matches the guest's serial request limit.
+
+export class PermanentRequestError extends Error {}
 
 async function prepareBrowser(): Promise<void> {
   if (globalThis.crossOriginIsolated) {
@@ -107,10 +110,11 @@ export class AtlasRuntime {
             break;
           }
           case "error": {
+            if (data.fatal) throw new PermanentRequestError(data.message);
             const reply = this.pending.get(data.id);
             if (!reply) throw new Error(data.message);
             this.pending.delete(data.id);
-            reply.reject(new Error(data.message));
+            reply.reject(data.permanent ? new PermanentRequestError(data.message) : new Error(data.message));
             break;
           }
           case "exit": this.close(new Error("The Atlas session has ended.")); break;
@@ -138,6 +142,9 @@ export class AtlasRuntime {
   }
 
   async request(method: string, path: string, body?: Uint8Array): Promise<Response> {
+    if (body && body.byteLength > maxRequestBytes) {
+      throw new PermanentRequestError("The request exceeds the 8 MiB browser limit.");
+    }
     await this.start();
     if (!this.active) throw new Error("The Atlas workspace has stopped.");
     const id = ++this.id;

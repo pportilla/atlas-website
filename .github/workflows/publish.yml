@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
-      contents: read
+      contents: write
       pages: read
     outputs:
       publish: ${{ steps.version.outputs.publish }}
@@ -42,6 +42,7 @@ jobs:
           set -euo pipefail
           sha=$(git -C upstream rev-parse HEAD)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "runtime=$(git rev-parse HEAD:runtime)" >> "$GITHUB_OUTPUT"
           pages=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url)
           if [[ "$GITHUB_EVENT_NAME" == schedule ]] && \
              curl -fsSL "${pages%/}/version.json" | jq -e --arg a "$sha" --arg w "$GITHUB_SHA" '.atlas==$a and .website==$w' >/dev/null; then
@@ -77,7 +78,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: dist/vm
-          key: browser-vm-${{ steps.version.outputs.sha }}-${{ hashFiles('runtime/**', '.dockerignore') }}
+          key: browser-vm-${{ steps.version.outputs.sha }}-${{ steps.version.outputs.runtime }}-${{ hashFiles('src/emulator.ts', '.dockerignore', 'package-lock.json') }}
       - name: Package the native Atlas binaries and WebAssembly emulator
         if: steps.version.outputs.publish == 'true' && steps.vm.outputs.cache-hit != 'true'
         env:
@@ -86,9 +87,15 @@ jobs:
           set -euo pipefail
           mkdir "$RUNNER_TEMP/atlas-source"
           git -C upstream archive "$ATLAS_SHA" | tar xf - -C "$RUNNER_TEMP/atlas-source"
-          docker buildx build --build-context "atlas=$RUNNER_TEMP/atlas-source" --build-arg "ATLAS_REVISION=$ATLAS_SHA" \
+          docker buildx build --platform linux/amd64 --build-context "atlas=$RUNNER_TEMP/atlas-source" --build-arg "ATLAS_REVISION=$ATLAS_SHA" \
             -f runtime/browser/Dockerfile --output type=local,dest=dist/vm .
           python3 runtime/browser/fetch_emulator.py dist/vm
+      - name: Install the browser for packaging and verification
+        if: steps.version.outputs.publish == 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Save the already-booted guest for faster local startup
+        if: steps.version.outputs.publish == 'true' && steps.vm.outputs.cache-hit != 'true'
+        run: node runtime/browser/snapshot.mjs dist/vm
       - name: Test both tools in a browser against static files alone
         if: steps.version.outputs.publish == 'true'
         env:
@@ -96,8 +103,24 @@ jobs:
         run: |
           set -euo pipefail
           test "$(cat dist/vm/REVISION)" = "$ATLAS_SHA"
-          npx playwright install --with-deps chromium
           npm run test:browser
+      - name: Publish the precompiled local edition
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATLAS_SHA: ${{ steps.version.outputs.sha }}
+        run: |
+          set -euo pipefail
+          tag="local-${ATLAS_SHA:0:12}-${GITHUB_SHA:0:12}"
+          if ! gh release view "$tag" --json isDraft,assets | jq -e '(.isDraft|not) and any(.assets[]; .name=="atlas-local.zip")' >/dev/null; then
+            (cd dist && zip -qr "$RUNNER_TEMP/atlas-local.zip" . -x '.atlas-website-output' '.nojekyll' 'vm/atlas.cpio.gz' 'vm/vmlinuz')
+            if ! gh release view "$tag" >/dev/null 2>&1; then
+              gh release create "$tag" --target "$GITHUB_SHA" --title "Atlas local edition · ${ATLAS_SHA:0:7}" --draft \
+                --notes 'Unzip atlas-local.zip, run python3 start.py (Windows: py start.py), and open the local Atlas workspace in your browser.'
+            fi
+            gh release upload "$tag" "$RUNNER_TEMP/atlas-local.zip" --clobber
+            gh release edit "$tag" --draft=false --latest
+          fi
       - uses: actions/upload-pages-artifact@v5
         if: steps.version.outputs.publish == 'true'
         with:
