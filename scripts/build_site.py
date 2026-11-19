@@ -133,11 +133,14 @@ def prepare_home(atlas, site, revision, wordmark, lettered_map):
     tools = (("Terminal", "terminal/"), ("Resolution suite", "resolution/"))
     groups = {
         "Workspace": (("Overview", "./"), *tools),
-        "Documentation": (manual, ("Function reference", "docs/reference/functions.html"),
-                          ("Alphabetical index", "docs/genindex.html")),
-        "Worked guides": (("Resolve a plane cusp", "docs/docs/resolving-a-cusp.html"),
-                          ("Quotient algebras", "docs/examples/quotient-algebras.html"),
-                          ("Local geometry", "docs/examples/local-geometry.html")),
+        # The manual's front page lists the same documents.
+        "Documentation": (manual, ("A tour of Atlas", "docs/tour.html"), ("Tutorial", "docs/tutorial/index.html"),
+                          ("Constructions", "docs/constructions.html"),
+                          ("Reference manual", "docs/reference/index.html"),
+                          ("Function index", "docs/reference/genindex.html")),
+        "Worked examples": (("Resolving a plane cusp", "docs/tutorial/resolving-a-cusp.html"),
+                            ("Quotient rings", "docs/tutorial/quotient-rings.html"),
+                            ("Geometry at a rational point", "docs/tutorial/local-geometry.html")),
     }
     sidebar = []
     for title, links in groups.items():

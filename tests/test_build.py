@@ -115,14 +115,14 @@ class BuildTests(unittest.TestCase):
                         anchors = PageLinks()
                         anchors.feed(target.read_text())
                         self.assertIn(unquote(parsed.fragment), anchors.ids)
-            guide = (out / "docs/docs/lean-verification-roadmap.html").read_text()
+            guide = (out / "docs/developer/lean-verification-roadmap.html").read_text()
             self.assertIn('<a href="../../index.html">Atlas website</a>', guide)
             self.assertIn('<a href="../index.html">Atlas website</a>', (out / "docs/index.html").read_text())
             self.assertIn('href="../source/native/groebner.cpp.html"', guide)
-            self.assertIn(f'{build_site.ATLAS_URL}/blob/{sha}/docs/lean-verification-roadmap.md"', guide)
-            reference = (out / "docs/reference/functions.html").read_text()
+            self.assertIn(f'{build_site.ATLAS_URL}/blob/{sha}/docs/developer/lean-verification-roadmap.md"', guide)
+            reference = (out / "docs/reference/germ-invariants.html").read_text()
             self.assertRegex(reference, r"\.\./source/native/ae_codimension\.cpp\.html#L[0-9]+")
-            self.assertIn('href="../docs/sessions.html#', reference)
+            self.assertIn('href="../tutorial/local-algebra.html#', reference)
 
 
 if __name__ == "__main__":

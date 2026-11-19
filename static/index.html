@@ -9,7 +9,7 @@
   <table>
     <thead><tr><th scope="col">Open</th><th scope="col">What you can do</th></tr></thead>
     <tbody>
-      <tr><td><a href="docs/">Documentation</a></td><td>Follow a worked example or look up a function, its arguments, and its return value.</td></tr>
+      <tr><td><a href="docs/">Documentation</a></td><td>Take the tour, work through the tutorial, or look up a function, its arguments, and its return value in the reference manual.</td></tr>
       <tr><td><a href="terminal/">Atlas terminal</a></td><td>Declare coordinates, evaluate expressions, and reuse the results in your next command.</td></tr>
       <tr><td><a href="resolution/">Resolution suite</a></td><td>Submit a polynomial, inspect its exceptional divisors and charts, and download the resolution record.</td></tr>
     </tbody>
@@ -19,8 +19,8 @@
 
 <h2 id="plane-cusp">Resolve a plane cusp<a class="headerlink" href="#plane-cusp" aria-label="Link to this section">¶</a></h2>
 <p>Which exceptional divisor does the branch of the cusp <math aria-label="y squared equals x cubed"><msup><mi>y</mi><mn>2</mn></msup><mo>=</mo><msup><mi>x</mi><mn>3</mn></msup></math> meet? In the terminal, name the coordinates and ask the resolution for the branch's attachment.</p>
-<pre class="code"><code><span class="line in"><span class="t-brand">atlas</span><span class="t-muted">&gt;</span> x, y = <a class="code-ref" href="docs/reference/functions.html#coordinates"><span class="t-function">coordinates</span></a>(<span class="t-string">"x"</span>, <span class="t-string">"y"</span>)</span>
-<span class="line in"><span class="t-brand">atlas</span><span class="t-muted">&gt;</span> <span class="t-name">K</span> = <a class="code-ref" href="docs/reference/functions.html#resolve"><span class="t-function">resolve</span></a>(y^<span class="t-number">2</span> - x^<span class="t-number">3</span>)</span>
+<pre class="code"><code><span class="line in"><span class="t-brand">atlas</span><span class="t-muted">&gt;</span> x, y = <a class="code-ref" href="docs/reference/rings.html#coordinates"><span class="t-function">coordinates</span></a>(<span class="t-string">"x"</span>, <span class="t-string">"y"</span>)</span>
+<span class="line in"><span class="t-brand">atlas</span><span class="t-muted">&gt;</span> <span class="t-name">K</span> = <a class="code-ref" href="docs/reference/resolution.html#resolve"><span class="t-function">resolve</span></a>(y^<span class="t-number">2</span> - x^<span class="t-number">3</span>)</span>
 <span class="line in"><span class="t-brand">atlas</span><span class="t-muted">&gt;</span> <span class="t-name">K</span>.<span class="t-field">branches</span>[<span class="t-number">0</span>].<span class="t-field">meets</span></span>
 <span class="line out">[E3]</span></code></pre>
-<p>The branch meets <code>E3</code>, the exceptional curve from the third blowup. <a href="docs/docs/resolving-a-cusp.html">Follow the branch through the charts</a> to see where they intersect.</p>
+<p>The branch meets <code>E3</code>, the exceptional curve from the third blowup. <a href="docs/tutorial/resolving-a-cusp.html">Follow the branch through the charts</a> to see where they intersect.</p>
