@@ -1,8 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status !== testInfo.expectedStatus && !page.isClosed()) {
+    const progress = await page.locator("#runtime-status, .run-status, .run-message").allTextContents();
+    console.error("Resolution workspace at failure:", progress.join(" | "));
+  }
+});
+
 test("resolve a cusp locally, replay its monodromy zeta, and export the charts", async ({ page }) => {
-  test.setTimeout(360_000);
+  test.setTimeout(12 * 60_000);
   const requests = new Set<string>();
   page.context().on("request", request => { requests.add(request.url()); });
 
@@ -12,7 +19,17 @@ test("resolve a cusp locally, replay its monodromy zeta, and export the charts",
   await page.locator("#zeta").uncheck();
   await page.locator("#topological").uncheck();
   await page.getByRole("button", { name: "Resolve", exact: true }).click();
-  await expect(page.locator(".run-status")).toHaveText("Resolved", { timeout: 240_000 });
+  const status = page.locator(".run-status");
+  await test.step("Start Atlas and submit the cusp", async () => {
+    // The cold browser session can spend up to four minutes starting Atlas.
+    // A fast computation may already be finished when submission returns.
+    await expect(status.filter({ hasNotText: /^Starting$/ })).toBeVisible({ timeout: 255_000 });
+  });
+  await test.step("Wait for the submitted search to finish", async () => {
+    const finished = status.filter({ hasNotText: /^(Starting|Queued|Searching|Cancelling)$/ });
+    await expect(finished).toBeVisible({ timeout: 300_000 });
+    await expect(finished).toHaveText("Resolved");
+  });
 
   await page.getByRole("button", { name: "Compute monodromy zeta function" }).click();
   await expect(page.getByRole("button", { name: "Compute monodromy zeta function" }))
