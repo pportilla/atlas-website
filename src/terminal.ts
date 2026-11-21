@@ -59,10 +59,19 @@ start.addEventListener("click", async () => {
   command.focus();
   status.textContent = "Starting Atlas…";
   terminal?.dispose();
+  const palette = getComputedStyle(screen);
   terminal = new Terminal({
     cursorBlink: true, disableStdin: true, screenReaderMode: true,
     fontFamily: '"Source Code Pro", monospace', fontSize: 15, scrollback: 6000,
-    theme: { background: "#12221f", foreground: "#e6f3e9", cursor: "#93d8c7" },
+    theme: {
+      background: palette.backgroundColor, foreground: palette.color,
+      cursor: palette.caretColor, cursorAccent: palette.backgroundColor,
+      selectionBackground: "#91adc959",
+      black: palette.backgroundColor, red: "#bc8988", green: "#90aa93", yellow: "#c3a378",
+      blue: palette.caretColor, magenta: "#ae9bbb", cyan: "#85a9b2", white: palette.color,
+      brightBlack: "#969ba2", brightRed: "#cfa1a0", brightGreen: "#a6bda8", brightYellow: "#d3b58c",
+      brightBlue: "#acc3db", brightMagenta: "#c0accd", brightCyan: "#a0bdc4", brightWhite: "#e4e5e7",
+    },
   });
   const display = terminal;
   const fit = new FitAddon();

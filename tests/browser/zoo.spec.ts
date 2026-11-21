@@ -7,6 +7,14 @@ test("browse and search the published catalogue without a resolution runtime", a
   await page.locator(".topnav").getByRole("link", { name: "Resolution Zoo" }).click();
   await expect(page.getByRole("heading", { name: "Resolution Zoo", exact: true })).toBeVisible();
 
+  const instructions = page.locator("#zoo-search-help");
+  await expect(instructions).toBeHidden();
+  const help = page.getByLabel("Monomial search help");
+  await help.hover();
+  await expect(instructions).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(instructions).toBeHidden();
+
   const query = page.getByRole("searchbox", { name: "Search by monomials" });
   await query.fill("1/2*a*b^3, -b^4");
   await expect(page.locator("#zoo-count")).toHaveText("1 record");
@@ -27,6 +35,22 @@ test("browse and search the published catalogue without a resolution runtime", a
   await expect(page.locator("#resolve-form")).toBeVisible();
   await page.locator(".masthead").getByRole("link", { name: "Resolution Zoo" }).click();
   await expect(query).toBeVisible();
+});
+
+test("the colour theme selected on the homepage follows the reader into each tool", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("./");
+  const pageColour = () => page.locator("body").evaluate(body => getComputedStyle(body).backgroundColor);
+  const light = await pageColour();
+  const toggle = page.getByRole("button", { name: "Colour theme" });
+  await toggle.click(); // System to light.
+  await toggle.click(); // Light to dark.
+  const dark = await pageColour();
+  expect(dark).not.toBe(light);
+  for (const path of ["docs/", "terminal/", "resolution/", "zoo/"]) {
+    await page.goto(path);
+    await expect(page.locator("body")).toHaveCSS("background-color", dark);
+  }
 });
 
 test("the Zoo button fits the homepage and manual navigation", async ({ page }) => {

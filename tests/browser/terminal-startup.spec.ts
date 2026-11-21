@@ -47,6 +47,13 @@ test("an editable draft passes to the terminal only when its coloured prompt fin
   const draft = page.getByRole("textbox", { name: "First Atlas command" });
   await expect(status).toHaveText("Waiting for the Atlas prompt…");
   await expect(draft).toBeFocused();
+  const palette = await page.locator("#terminal-screen").evaluate(element => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, foreground: style.color, blue: style.caretColor };
+  });
+  await expect(page.locator("#terminal-startup")).toHaveCSS("background-color", palette.background);
+  await expect(page.locator(".xterm-scrollable-element")).toHaveCSS("background-color", palette.background);
+  await expect(page.locator(".xterm-rows")).toHaveCSS("color", palette.foreground);
   await page.keyboard.type("helx");
   await page.keyboard.press("Backspace");
   await page.keyboard.type("p");
@@ -56,8 +63,9 @@ test("an editable draft passes to the terminal only when its coloured prompt fin
   await guestOutput(page, "Welcome! Commands begin at atlas>.\r\n");
   await expect(rows.filter({ hasText: "Welcome! Commands begin at atlas>." })).toHaveCount(1);
   await expect(status).toHaveText("Waiting for the Atlas prompt…");
-  await guestOutput(page, "\x1b[36matl");
+  await guestOutput(page, "\x1b[34matl");
   await expect(rows.filter({ hasText: /^\s*atl\s*$/ })).toHaveCount(1);
+  await expect(rows.getByText("atl", { exact: true })).toHaveCSS("color", palette.blue);
   await expect(draft).toBeEditable();
   await expect(status).toHaveText("Waiting for the Atlas prompt…");
   expect((await announcements.jsonValue()).join("\n")).not.toMatch(/running on this device/i);
