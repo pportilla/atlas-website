@@ -26,7 +26,7 @@ Set the website repository’s Pages publishing source to **GitHub Actions**. Wh
 
 ## Build and run locally
 
-Use sibling clones of this repository and Atlas. Install Python 3.10 or later, Node.js 22 with npm, Emscripten (the `em++` compiler), and Docker with Buildx for Linux x86-64 builds. From the website checkout, build the website first:
+Use sibling clones of this repository and Atlas. Install Python 3.10 or later, Node.js 22 with npm, Emscripten (publication uses `em++` 3.1.64), and Docker with Buildx for Linux x86-64 builds. From the website checkout, build the website first:
 
 ```sh
 python3 -m venv .venv

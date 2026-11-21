@@ -62,8 +62,10 @@ jobs:
           ATLAS_SHA: ${{ steps.version.outputs.sha }}
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends emscripten
+          git clone --quiet --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 3.1.64
+          "$RUNNER_TEMP/emsdk/emsdk" activate 3.1.64
+          export PATH="$RUNNER_TEMP/emsdk/upstream/emscripten:$PATH"
           python3 -m venv "$RUNNER_TEMP/docs-env"
           source "$RUNNER_TEMP/docs-env/bin/activate"
           pip install -r upstream/requirements-docs.txt
