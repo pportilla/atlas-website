@@ -1,8 +1,10 @@
 # Atlas website
 
-[Open the website](https://pportilla.github.io/atlas-website/) for the [manual](https://pportilla.github.io/atlas-website/docs/), [Atlas terminal](https://pportilla.github.io/atlas-website/terminal/), and [resolution suite](https://pportilla.github.io/atlas-website/resolution/).
+[Open the website](https://pportilla.github.io/atlas-website/) for the [manual](https://pportilla.github.io/atlas-website/docs/), [Atlas terminal](https://pportilla.github.io/atlas-website/terminal/), [Resolution Zoo](https://pportilla.github.io/atlas-website/zoo/), and [resolution suite](https://pportilla.github.io/atlas-website/resolution/).
 
-Both tools run on the visitor’s computer. When you start the terminal or submit a polynomial, the browser downloads a precompiled Atlas runtime and boots it in a Web Worker. It needs a recent desktop browser with WebAssembly threads, JavaScript, and enough memory for a Linux guest. The manual is available immediately. Closing the tab ends the session. Use **Download JSON** to keep a resolution record.
+The Zoo loads saved JSON records on demand and searches them with the native monomial matcher compiled to WebAssembly. Browsing and searching also work in the offline edition.
+
+The terminal and resolution suite run on the visitor’s computer. When you start the terminal or submit a polynomial, the browser downloads a precompiled Atlas runtime and boots it in a Web Worker. It needs a recent desktop browser with WebAssembly threads, JavaScript, and enough memory for a Linux guest. The manual is available immediately. Closing the tab ends the session. Use **Download JSON** to keep a resolution record.
 
 ## Run the precompiled tools offline
 
@@ -24,7 +26,7 @@ Set the website repository’s Pages publishing source to **GitHub Actions**. Wh
 
 ## Build and run locally
 
-Use sibling clones of this repository and Atlas. Install Python 3.10 or later, Node.js 22 with npm, and Docker with Buildx for Linux x86-64 builds. From the website checkout, build the website first:
+Use sibling clones of this repository and Atlas. Install Python 3.10 or later, Node.js 22 with npm, Emscripten (the `em++` compiler), and Docker with Buildx for Linux x86-64 builds. From the website checkout, build the website first:
 
 ```sh
 python3 -m venv .venv

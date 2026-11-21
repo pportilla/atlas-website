@@ -83,6 +83,18 @@ class BuildTests(unittest.TestCase):
                     original = subprocess.check_output(["git", "show", f"{sha}:web/{asset}"], cwd=ATLAS)
                     self.assertEqual((out / "resolution" / asset).read_bytes(), original)
 
+            zoo = (out / "zoo/index.html").read_text()
+            self.assertIn('href="../resolution/"', zoo)
+            self.assertIn('href="../zoo/"', resolution)
+            self.assertIn('src="./search.js"', zoo)
+            self.assertIn('src="./zoo.js"', zoo)
+            self.assertNotIn("<!--atlas:", zoo)
+            self.assertFalse((out / "resolution/zoo-data").exists())
+            index = json.loads((out / "zoo/zoo-data/index.json").read_text())
+            self.assertGreaterEqual(len(index["entries"]), 50)
+            for entry in index["entries"]:
+                self.assertTrue((out / "zoo/zoo-data/records" / (entry["id"] + ".json")).is_file())
+            self.assertEqual((out / "zoo/zoo-kernel.wasm").read_bytes()[:4], b"\0asm")
             home = (out / "index.html").read_text()
             self.assertEqual(home.lower().count("<!doctype html>"), 1)
             self.assertEqual(home.count('<article class="prose">'), 1)

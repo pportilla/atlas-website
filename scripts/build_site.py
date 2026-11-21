@@ -97,7 +97,8 @@ def render_brand(atlas):
     command = (
         "import json; from pathlib import Path; "
         "from engine.web_brand import wordmark_html, lettered_map_html, fill_brand; "
-        "print(json.dumps([wordmark_html(), lettered_map_html(), fill_brand(Path('web/index.html').read_text())]))"
+        "pages = [fill_brand(Path('web', name).read_text()) for name in ('index.html', 'zoo.html')]; "
+        "print(json.dumps([wordmark_html(), lettered_map_html(), *pages]))"
     )
     return json.loads(subprocess.check_output([sys.executable, "-c", command], cwd=atlas, text=True))
 
@@ -106,10 +107,14 @@ def prepare_resolution(atlas, site, upstream):
     """Stage the upstream application and load the browser HTTP adapter before app.js."""
     target = site / "resolution"
     panel = (target / "index.html").read_text(encoding="utf-8")
-    shutil.copytree(atlas / "web", target, dirs_exist_ok=True)
+    shutil.copytree(atlas / "web", target, dirs_exist_ok=True, ignore=shutil.ignore_patterns("zoo*"))
 
     def local_url(match):
         relative = match["path"] or "../"
+        if relative in ("zoo.css", "zoo-mark.svg"):
+            relative = "../zoo/" + relative
+        elif relative == "zoo/":
+            relative = "../zoo/"
         return f'{match["attr"]}="{relative}"'
 
     page = re.sub(r'(?P<attr>href|src)="/(?P<path>[^"/][^"]*|)"', local_url, upstream)
@@ -118,6 +123,25 @@ def prepare_resolution(atlas, site, upstream):
     page = page.replace("<script ", hook + "\n  <script ", 1)
     page = page.replace("</header>", "</header>\n" + panel, 1)
     (target / "index.html").write_text(page, encoding="utf-8")
+
+
+def prepare_zoo(atlas, site, upstream):
+    """Stage the recorded results and compile the native matcher used at the Atlas prompt."""
+    target = site / "zoo"
+    for asset in ("zoo.css", "zoo.js", "zoo-mark.svg"):
+        shutil.copy2(atlas / "web" / asset, target / asset)
+    shutil.copytree(atlas / "web/zoo-data", target / "zoo-data")
+    shared = ("atlas-mark.svg", "identity.css", "style.css", "resolution.css", "complex.css",
+              "exact-json.js", "typeset.js", "dual-graph.js")
+    for asset in shared:
+        upstream = upstream.replace(f'"./{asset}"', f'"../resolution/{asset}"')
+    upstream = upstream.replace('class="zoo-suite-link" href="../"', 'class="zoo-suite-link" href="../resolution/"')
+    upstream = upstream.replace('<script src="./zoo.js"', '<script src="./search.js" defer></script>\n  <script src="./zoo.js"')
+    (target / "index.html").write_text(upstream, encoding="utf-8")
+    subprocess.run(["em++", str(atlas / "native/zoo_search.cpp"), "-std=c++17", "-Oz", "-fexceptions",
+                    "-sMODULARIZE=1", "-sEXPORT_ES6=1", "-sENVIRONMENT=worker", "-sALLOW_MEMORY_GROWTH=1",
+                    "-sEXPORTED_FUNCTIONS=_malloc,_free,_atlas_zoo_create,_atlas_zoo_search,_atlas_zoo_error",
+                    "-sEXPORTED_RUNTIME_METHODS=UTF8ToString", "-o", str(target / "zoo-kernel.mjs")], check=True)
 
 
 def prepare_home(atlas, site, revision, wordmark, lettered_map):
@@ -130,7 +154,7 @@ def prepare_home(atlas, site, revision, wordmark, lettered_map):
     article = home_page.read_text(encoding="utf-8").replace("@ATLAS_MAP@", lettered_map)
 
     manual = ("Manual", "docs/")
-    tools = (("Terminal", "terminal/"), ("Resolution suite", "resolution/"))
+    tools = (("Terminal", "terminal/"), ("Resolution suite", "resolution/"), ("Resolution Zoo", "zoo/"))
     groups = {
         "Workspace": (("Overview", "./"), *tools),
         # The manual's front page lists the same documents.
@@ -152,11 +176,19 @@ def prepare_home(atlas, site, revision, wordmark, lettered_map):
     toc = ('<h2>On this page</h2><ul>'
            '<li><a class="level-2" href="#work-with-atlas">Work with Atlas</a></li>'
            '<li><a class="level-2" href="#plane-cusp">Resolve a plane cusp</a></li></ul>')
+    topnav = []
+    for label, href in (manual, *tools):
+        if href == "zoo/":
+            topnav.append('<a class="home-zoo" href="zoo/" aria-label="Resolution Zoo">'
+                          '<img src="zoo/zoo-mark.svg" width="22" height="22" alt=""> <span>Resolution Zoo</span></a>')
+        else:
+            topnav.append(f'<a href="{href}">{label}</a>')
     values = {
         "title": "Atlas · Algebra and resolution of singularities",
-        "head": '<meta name="description" content="The Atlas manual, interactive terminal and resolution suite.">',
+        "head": '<meta name="description" content="The Atlas manual, terminal, resolution suite and Resolution Zoo.">'
+                '<link rel="stylesheet" href="tools.css">',
         "root": "docs/", "wordmark": wordmark, "version": revision[:7],
-        "topnav": "".join(f'<a href="{href}">{label}</a>' for label, href in (manual, *tools)),
+        "topnav": "".join(topnav),
         "sidebar": "".join(sidebar), "toc": toc, "pager": "",
         "content": f'<details class="toc-inline"><summary>On this page</summary>{toc}</details>\n{article}',
         "footer": f'<a href="{ATLAS_URL}/tree/{revision}">Atlas source</a> · '
@@ -186,7 +218,7 @@ def build(atlas, out):
         subprocess.run(["git", "checkout", "--quiet", "--detach", revision], cwd=source, check=True)
         site = Path(temp) / "site"
         shutil.copytree(ROOT / "static", site)
-        wordmark, lettered_map, resolution = render_brand(source)
+        wordmark, lettered_map, resolution, zoo = render_brand(source)
         substitutions = {"@ATLAS_REVISION@": revision, "@ATLAS_SHORT@": revision[:7], "@ATLAS_WORDMARK@": wordmark}
         for page in site.rglob("*.html"):
             html = page.read_text(encoding="utf-8")
@@ -196,6 +228,7 @@ def build(atlas, out):
         prepare_manual(source, site / "docs", revision)
         prepare_home(source, site, revision, wordmark, lettered_map)
         prepare_resolution(source, site, resolution)
+        prepare_zoo(source, site, zoo)
         (site / ".nojekyll").touch()
         (site / BUILD_MARKER).touch()
         # Stage in the destination filesystem so a failed compile preserves the previous site.

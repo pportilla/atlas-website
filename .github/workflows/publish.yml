@@ -62,6 +62,8 @@ jobs:
           ATLAS_SHA: ${{ steps.version.outputs.sha }}
         run: |
           set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends emscripten
           python3 -m venv "$RUNNER_TEMP/docs-env"
           source "$RUNNER_TEMP/docs-env/bin/activate"
           pip install -r upstream/requirements-docs.txt
