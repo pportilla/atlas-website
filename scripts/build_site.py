@@ -77,6 +77,11 @@ def audit_search(docs):
             raise ValueError(f"Missing Atlas search anchors in {path}: {sorted(missing)}")
 
 
+def zoo_link(href):
+    return (f'<a class="zoo-shortcut" href="{href}" aria-label="Resolution Zoo">'
+            f'<img src="{href}zoo-mark.svg" width="22" height="22" alt=""> <span>Resolution Zoo</span></a>')
+
+
 def prepare_manual(atlas, docs, revision):
     subprocess.run([sys.executable, "docs/site/build.py", "--out", str(docs)], cwd=atlas, check=True)
     for file in docs.rglob("*.html"):
@@ -87,6 +92,10 @@ def prepare_manual(atlas, docs, revision):
         if revised.count(footer_end) != 1:
             raise ValueError(f"Cannot locate the Atlas documentation footer in {page}")
         home = posixpath.relpath("index.html", posixpath.dirname(f"docs/{page}"))
+        site_root = home.removesuffix("index.html")
+        revised = re.sub(r'(<nav class="topnav"[^>]*>.*?)(</nav>)',
+                         lambda match: match[1] + zoo_link(site_root + "zoo/") + match[2], revised, count=1)
+        revised = revised.replace("</head>", f'<link rel="stylesheet" href="{site_root}tools.css">\n</head>', 1)
         backlink = f' · <a href="{home}">Atlas website</a>'
         file.write_text(revised.replace(footer_end, backlink + footer_end), encoding="utf-8")
     audit_search(docs)
@@ -179,8 +188,7 @@ def prepare_home(atlas, site, revision, wordmark, lettered_map):
     topnav = []
     for label, href in (manual, *tools):
         if href == "zoo/":
-            topnav.append('<a class="home-zoo" href="zoo/" aria-label="Resolution Zoo">'
-                          '<img src="zoo/zoo-mark.svg" width="22" height="22" alt=""> <span>Resolution Zoo</span></a>')
+            topnav.append(zoo_link(href))
         else:
             topnav.append(f'<a href="{href}">{label}</a>')
     values = {

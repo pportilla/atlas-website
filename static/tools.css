@@ -1,15 +1,26 @@
 .tool-nav, .runtime-bar nav { display: flex; align-items: center; gap: 1.2rem; }
 .topnav img, .tool-nav img { vertical-align: middle; }
 .topnav a, .tool-nav a { white-space: nowrap; }
-.topnav .home-zoo {
+.topnav .zoo-shortcut {
   align-self: center; padding: .35rem .65rem; border: 1px solid var(--rule);
   border-radius: 4px; background: var(--surface); color: var(--brand-deep);
 }
-.topnav .home-zoo:hover { background: var(--brand-wash); }
+.topnav .zoo-shortcut:hover { background: var(--brand-wash); }
+@media (min-width: 901px) and (max-width: 1250px) {
+  .topbar:has(.zoo-shortcut) .version { display: none; }
+}
+@media (min-width: 901px) {
+  .topbar:has(.zoo-shortcut) .search { flex: 1; min-width: 5rem; max-width: 15rem; }
+  .topbar:has(.zoo-shortcut) .search input { width: 100%; }
+}
+@media (min-width: 901px) and (max-width: 1150px) {
+  .topnav .zoo-shortcut span { display: none; }
+  .topnav:has(.zoo-shortcut) { gap: .85rem; margin-left: 0; }
+}
 @media (max-width: 900px) {
-  .topnav:has(.home-zoo) { display: flex; margin-left: 0; }
-  .topnav:has(.home-zoo) > :not(.home-zoo), .home-zoo span { display: none; }
-  .topnav .home-zoo { padding: .35rem; }
+  .topnav:has(.zoo-shortcut) { display: flex; margin-left: 0; }
+  .topnav:has(.zoo-shortcut) > :not(.zoo-shortcut), .zoo-shortcut span { display: none; }
+  .topnav .zoo-shortcut { padding: .35rem; }
 }
 @media (max-width: 620px) {
   .topbar:has(.tool-nav) { height: auto; flex-wrap: wrap; padding-block: .5rem; }

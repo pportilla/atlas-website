@@ -62,6 +62,7 @@ class BuildTests(unittest.TestCase):
             build_site.build(ATLAS, out)
             kernel = out / "docs/source/native/groebner.cpp.html"
             self.assertIn('<a href="../../../index.html">Atlas website</a>', kernel.read_text())
+            self.assertIn('href="../../../zoo/" aria-label="Resolution Zoo"', kernel.read_text())
             self.assertTrue((kernel.parent / "../../../index.html").is_file())
             build_site.build(ATLAS, out)
             terminal = (out / "terminal/index.html").read_text()

@@ -28,3 +28,18 @@ test("browse and search the published catalogue without a resolution runtime", a
   await page.locator(".masthead").getByRole("link", { name: "Resolution Zoo" }).click();
   await expect(query).toBeVisible();
 });
+
+test("the Zoo button fits the homepage and manual navigation", async ({ page }) => {
+  for (const width of [320, 910, 1251]) {
+    await page.setViewportSize({ width, height: 780 });
+    for (const path of ["./", "docs/reference/index.html"]) {
+      await page.goto(path);
+      const link = page.locator("header").getByRole("link", { name: "Resolution Zoo" });
+      await expect(link).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+      await link.click();
+      await expect(page.locator("#zoo-detail h2")).toBeVisible();
+    }
+  }
+});
