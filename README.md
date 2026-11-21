@@ -12,7 +12,7 @@ The terminal and resolution suite run on the visitor’s computer. When you star
 
 ## How it works
 
-GitHub Pages serves static files. The homepage shares the manual’s template, typography, artwork, search, and theme controls. Its article is in `static/index.html`.
+GitHub Pages serves static files. The project homepage is a standalone page in `static/index.html`. The build supplies its Atlas wordmark and lettered map from the same commit used for the manual. The logo on each manual and tool page returns to the project homepage.
 
 The TypeScript interface connects to the real Atlas prompt or the resolution HTTP server over a serial connection to a Linux guest. The website uses the upstream resolution interface and the native C++ binaries compiled from the same Atlas revision as the manual. The guest’s only network interface is its own loopback. Calculations and terminal input stay in the tab.
 

@@ -4,7 +4,7 @@ test("browse and search the published catalogue without a resolution runtime", a
   const requests: string[] = [];
   context.on("request", request => requests.push(new URL(request.url()).pathname));
   await page.goto("./");
-  await page.locator(".topnav").getByRole("link", { name: "Resolution Zoo" }).click();
+  await page.getByRole("navigation", { name: "Atlas destinations" }).getByRole("link", { name: "Resolution Zoo" }).click();
   await expect(page.getByRole("heading", { name: "Resolution Zoo", exact: true })).toBeVisible();
 
   const instructions = page.locator("#zoo-search-help");
@@ -53,17 +53,20 @@ test("the colour theme selected on the homepage follows the reader into each too
   }
 });
 
-test("the Zoo button fits the homepage and manual navigation", async ({ page }) => {
+test("the Zoo link fits the homepage and manual navigation and its logo returns home", async ({ page }) => {
   for (const width of [320, 910, 1251]) {
     await page.setViewportSize({ width, height: 780 });
     for (const path of ["./", "docs/reference/index.html"]) {
       await page.goto(path);
-      const link = page.locator("header").getByRole("link", { name: "Resolution Zoo" });
+      const navigation = path === "./" ? page.getByRole("navigation", { name: "Atlas destinations" }) : page.locator("header");
+      const link = navigation.getByRole("link", { name: "Resolution Zoo" });
       await expect(link).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
       await link.click();
       await expect(page.locator("#zoo-detail h2")).toBeVisible();
+      await page.locator("header").getByRole("link", { name: "Atlas home" }).click();
+      await expect(page.getByRole("navigation", { name: "Atlas destinations" })).toBeVisible();
     }
   }
 });

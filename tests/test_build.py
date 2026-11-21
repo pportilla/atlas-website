@@ -2,10 +2,11 @@ from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
-from urllib.parse import unquote, urlsplit
+from urllib.parse import unquote, urljoin, urlsplit
 
 from scripts import build_site
 
@@ -43,6 +44,12 @@ class PageLinks(HTMLParser):
         super().__init__()
         self.urls = []
         self.ids = set()
+        self.links = set()
+        self.destinations = []
+        self.brand_links = []
+        self.in_header = False
+        self.header_link = None
+        self.in_destinations = False
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
@@ -51,6 +58,29 @@ class PageLinks(HTMLParser):
         for name in ("href", "src"):
             if name in attrs:
                 self.urls.append(attrs[name])
+        if tag == "header":
+            self.in_header = True
+        elif tag == "nav" and attrs.get("aria-label") == "Atlas destinations":
+            self.in_destinations = True
+        elif tag == "a" and "href" in attrs:
+            self.links.add(attrs["href"])
+            if self.in_destinations:
+                self.destinations.append(attrs["href"])
+            if self.in_header:
+                self.header_link = attrs["href"]
+        elif self.header_link is not None:
+            ascii_logo = tag == "pre" and "ascii-art" in attrs.get("class", "").split()
+            image_logo = tag == "img" and Path(urlsplit(attrs.get("src", "")).path).name == "atlas-mark.svg"
+            if ascii_logo or image_logo:
+                self.brand_links.append(self.header_link)
+
+    def handle_endtag(self, tag):
+        if tag == "a":
+            self.header_link = None
+        elif tag == "header":
+            self.in_header = False
+        elif tag == "nav":
+            self.in_destinations = False
 
 
 @unittest.skipUnless((ATLAS / "docs/site/build.py").is_file(), "Set ATLAS_CHECKOUT to run the manual integration test")
@@ -98,23 +128,25 @@ class BuildTests(unittest.TestCase):
             self.assertEqual((out / "zoo/zoo-kernel.wasm").read_bytes()[:4], b"\0asm")
             home = (out / "index.html").read_text()
             self.assertEqual(home.lower().count("<!doctype html>"), 1)
-            self.assertEqual(home.count('<article class="prose">'), 1)
-            self.assertIn('<body data-root="docs/">', home)
-            self.assertIn('href="./" aria-label="Atlas home"', home)
-            self.assertIn('<span class="brand-label">home</span>', home)
-            self.assertIn(f'title="Version">{sha[:7]}</span>', home)
-            self.assertIn('class="theme-toggle"', home)
-            self.assertIn('localStorage.getItem("atlas-theme")', home)
-            for name in ("atlas-mark.svg", "identity.css", "docs.css", "docs.js", "search-index.js"):
-                self.assertIn(f'"docs/_static/{name}"', home)
             self.assertFalse((out / "assets/fonts").exists())
             self.assertFalse((out / "assets/atlas-mark.svg").exists())
             self.assertNotRegex(home, r"@[A-Z_]+@|\{\{\w+\}\}")
-            self.assertIn('<span class="t-paper">', home)
-            self.assertIn('<span class="t-brand">', home)
+            upstream_map = re.search(r'<pre\b[^>]*\bwelcome-map\b[^>]*>(.*?)</pre>', resolution, re.DOTALL)
+            self.assertIsNotNone(upstream_map)
+            self.assertIn(upstream_map[1], home)
+            for credit in ("Pipi Portilla", "ChatGPT", "Claude", "Universidad Politécnica de Madrid"):
+                with self.subTest(credit=credit):
+                    self.assertIn(credit, home)
             links = PageLinks()
             links.feed(home)
-            self.assertTrue({"search", "search-results", "sidebar", "plane-cusp", "work-with-atlas"} <= links.ids)
+            self.assertNotIn("sidebar", links.ids)
+            site = "https://example.github.io/atlas-website/"
+            self.assertCountEqual(
+                [urljoin(site, href) for href in links.destinations],
+                [site + route for route in ("docs/", "terminal/", "resolution/", "zoo/")],
+            )
+            self.assertIn(build_site.ATLAS_URL, links.links)
+            self.assertIn("mailto:p.portilla@upm.es", links.links)
             for url in links.urls:
                 parsed = urlsplit(url)
                 if parsed.netloc or parsed.scheme:
@@ -128,6 +160,13 @@ class BuildTests(unittest.TestCase):
                         anchors = PageLinks()
                         anchors.feed(target.read_text())
                         self.assertIn(unquote(parsed.fragment), anchors.ids)
+            for page in out.rglob("*.html"):
+                with self.subTest(brand=page.relative_to(out)):
+                    header = PageLinks()
+                    header.feed(page.read_text(encoding="utf-8").partition("</header>")[0])
+                    self.assertEqual(len(header.brand_links), 1, "Expected a linked Atlas logo in the masthead")
+                    page_url = site + page.relative_to(out).as_posix()
+                    self.assertIn(urljoin(page_url, header.brand_links[0]), (site, site + "index.html"))
             guide = (out / "docs/developer/lean-verification-roadmap.html").read_text()
             self.assertIn('<a href="../../index.html">Atlas website</a>', guide)
             self.assertIn('<a href="../index.html">Atlas website</a>', (out / "docs/index.html").read_text())

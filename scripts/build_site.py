@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Build the Atlas website from a website template and an Atlas git checkout.
 
-The article in static/index.html uses the upstream manual template and
-@ATLAS_MAP@ displays the same Atlas artwork as the manual. In static/ HTML
-files, @ATLAS_REVISION@ expands to the full checkout SHA,
-@ATLAS_SHORT@ to its first seven characters, and @ATLAS_WORDMARK@ to the terminal wordmark. Install the Atlas checkout's
+The project homepage is a standalone page in static/index.html. In static/ HTML
+files, @ATLAS_REVISION@ and @ATLAS_SHORT@ expand to the full and abbreviated
+Atlas commit SHA. @ATLAS_WORDMARK@ and @ATLAS_MAP@ expand to the wordmark and
+lettered map from that commit. Install the Atlas checkout's
 requirements-docs.txt in this Python environment before running the build.
 
     python3 scripts/build_site.py --atlas ../atlas --out dist
 """
 import argparse
 from collections import defaultdict
+from html import escape
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -77,6 +78,26 @@ def audit_search(docs):
             raise ValueError(f"Missing Atlas search anchors in {path}: {sorted(missing)}")
 
 
+class ManualWordmark(HTMLParser):
+    """Locate the header wordmark independently of attribute order and page depth."""
+    def __init__(self, home):
+        super().__init__()
+        self.home = home
+        self.tag = None
+        self.project_tag = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag != "a" or "brand" not in (attrs.get("class") or "").split():
+            return
+        if self.tag:
+            raise ValueError("Multiple Atlas wordmarks in the documentation header")
+        self.tag = self.get_starttag_text()
+        attrs.update({"href": self.home, "aria-label": "Atlas home"})
+        attributes = " ".join(name if value is None else f'{name}="{escape(value)}"' for name, value in attrs.items())
+        self.project_tag = f"<a {attributes}>"
+
+
 def zoo_link(href):
     return (f'<a class="zoo-shortcut" href="{href}" aria-label="Resolution Zoo">'
             f'<img src="{href}zoo-mark.svg" width="22" height="22" alt=""> <span>Resolution Zoo</span></a>')
@@ -93,6 +114,12 @@ def prepare_manual(atlas, docs, revision):
             raise ValueError(f"Cannot locate the Atlas documentation footer in {page}")
         home = posixpath.relpath("index.html", posixpath.dirname(f"docs/{page}"))
         site_root = home.removesuffix("index.html")
+        header, separator, rest = revised.partition("</header>")
+        wordmark = ManualWordmark(site_root)
+        wordmark.feed(header)
+        if not separator or not wordmark.tag:
+            raise ValueError(f"Cannot locate the Atlas documentation wordmark in {page}")
+        revised = header.replace(wordmark.tag, wordmark.project_tag, 1) + separator + rest
         revised = re.sub(r'(<nav class="topnav"[^>]*>.*?)(</nav>)',
                          lambda match: match[1] + zoo_link(site_root + "zoo/") + match[2], revised, count=1)
         revised = revised.replace("</head>", f'<link rel="stylesheet" href="{site_root}tools.css">\n</head>', 1)
@@ -153,58 +180,6 @@ def prepare_zoo(atlas, site, upstream):
                     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString", "-o", str(target / "zoo-kernel.mjs")], check=True)
 
 
-def prepare_home(atlas, site, revision, wordmark, lettered_map):
-    """Render the website overview with the pinned manual's template and artwork."""
-    template = (atlas / "docs/site/template.html").read_text(encoding="utf-8")
-    template = template.replace('href="{{root}}index.html" aria-label="Atlas documentation home"',
-                                'href="./" aria-label="Atlas home"')
-    template = template.replace('<span class="brand-label">docs</span>', '<span class="brand-label">home</span>')
-    home_page = site / "index.html"
-    article = home_page.read_text(encoding="utf-8").replace("@ATLAS_MAP@", lettered_map)
-
-    manual = ("Manual", "docs/")
-    tools = (("Terminal", "terminal/"), ("Resolution suite", "resolution/"), ("Resolution Zoo", "zoo/"))
-    groups = {
-        "Workspace": (("Overview", "./"), *tools),
-        # The manual's front page lists the same documents.
-        "Documentation": (manual, ("A tour of Atlas", "docs/tour.html"), ("Tutorial", "docs/tutorial/index.html"),
-                          ("Constructions", "docs/constructions.html"),
-                          ("Reference manual", "docs/reference/index.html"),
-                          ("Function index", "docs/reference/genindex.html")),
-        "Worked examples": (("Resolving a plane cusp", "docs/tutorial/resolving-a-cusp.html"),
-                            ("Quotient rings", "docs/tutorial/quotient-rings.html"),
-                            ("Geometry at a rational point", "docs/tutorial/local-geometry.html")),
-    }
-    sidebar = []
-    for title, links in groups.items():
-        items = []
-        for label, href in links:
-            current = ' aria-current="page"' if href == "./" else ""
-            items.append(f'<li><a href="{href}"{current}>{label}</a></li>')
-        sidebar.append(f'<div class="nav-group"><h2>{title}</h2><ul>{"".join(items)}</ul></div>')
-    toc = ('<h2>On this page</h2><ul>'
-           '<li><a class="level-2" href="#work-with-atlas">Work with Atlas</a></li>'
-           '<li><a class="level-2" href="#plane-cusp">Resolve a plane cusp</a></li></ul>')
-    topnav = []
-    for label, href in (manual, *tools):
-        if href == "zoo/":
-            topnav.append(zoo_link(href))
-        else:
-            topnav.append(f'<a href="{href}">{label}</a>')
-    values = {
-        "title": "Atlas · Algebra and resolution of singularities",
-        "head": '<meta name="description" content="The Atlas manual, terminal, resolution suite and Resolution Zoo.">'
-                '<link rel="stylesheet" href="tools.css">',
-        "root": "docs/", "wordmark": wordmark, "version": revision[:7],
-        "topnav": "".join(topnav),
-        "sidebar": "".join(sidebar), "toc": toc, "pager": "",
-        "content": f'<details class="toc-inline"><summary>On this page</summary>{toc}</details>\n{article}',
-        "footer": f'<a href="{ATLAS_URL}/tree/{revision}">Atlas source</a> · '
-                  '<a href="https://github.com/pportilla/atlas-website">Website repository</a>',
-    }
-    home_page.write_text(re.sub(r"\{\{(\w+)\}\}", lambda match: values[match[1]], template), encoding="utf-8")
-
-
 def build(atlas, out):
     atlas = atlas.resolve(strict=True)
     if out.is_symlink():
@@ -227,14 +202,14 @@ def build(atlas, out):
         site = Path(temp) / "site"
         shutil.copytree(ROOT / "static", site)
         wordmark, lettered_map, resolution, zoo = render_brand(source)
-        substitutions = {"@ATLAS_REVISION@": revision, "@ATLAS_SHORT@": revision[:7], "@ATLAS_WORDMARK@": wordmark}
+        substitutions = {"@ATLAS_REVISION@": revision, "@ATLAS_SHORT@": revision[:7],
+                         "@ATLAS_WORDMARK@": wordmark, "@ATLAS_MAP@": lettered_map}
         for page in site.rglob("*.html"):
             html = page.read_text(encoding="utf-8")
             for token, value in substitutions.items():
                 html = html.replace(token, value)
             page.write_text(html, encoding="utf-8")
         prepare_manual(source, site / "docs", revision)
-        prepare_home(source, site, revision, wordmark, lettered_map)
         prepare_resolution(source, site, resolution)
         prepare_zoo(source, site, zoo)
         (site / ".nojekyll").touch()
