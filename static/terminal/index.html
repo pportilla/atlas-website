@@ -31,7 +31,15 @@
       <button type="button" id="stop-terminal" aria-controls="terminal-screen" hidden>Stop session</button>
       <p role="status" id="runtime-status">Ready to start.</p>
     </div>
-    <div id="terminal-screen" role="region" aria-label="Interactive Atlas terminal" hidden></div>
+    <div id="terminal-screen" role="region" aria-label="Interactive Atlas terminal" hidden>
+      <div id="terminal-display"></div>
+      <form id="terminal-startup" hidden>
+        <label for="first-command">First Atlas command</label>
+        <input id="first-command" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+               enterkeyhint="go" aria-describedby="command-hint">
+        <p id="command-hint" aria-live="polite">You can type while Atlas starts. Press Enter to run your command when the prompt appears.</p>
+      </form>
+    </div>
     <noscript><p>Enable JavaScript to run the Atlas terminal.</p></noscript>
   </main>
 </body>

@@ -95,7 +95,6 @@ export class AtlasRuntime {
             if (data.role !== this.role) throw new Error("Atlas started the wrong workspace.");
             window.clearTimeout(this.timer);
             this.active = true;
-            this.onStatus("Running on this device");
             this.ready?.();
             break;
           case "output": this.onOutput?.(decode(data.data)); break;
