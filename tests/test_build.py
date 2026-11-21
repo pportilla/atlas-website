@@ -131,12 +131,24 @@ class BuildTests(unittest.TestCase):
             self.assertFalse((out / "assets/fonts").exists())
             self.assertFalse((out / "assets/atlas-mark.svg").exists())
             self.assertNotRegex(home, r"@[A-Z_]+@|\{\{\w+\}\}")
+            artwork = re.compile(r'<pre\b[^>]*\bascii-art\b[^>]*>(.*?)</pre>', re.DOTALL)
+            terminal_wordmarks = artwork.findall(terminal)
+            self.assertEqual(len(terminal_wordmarks), 1)
+            self.assertEqual(artwork.findall(home), terminal_wordmarks)
+            self.assertIn(terminal_wordmarks[0], home.partition("</header>")[0])
             upstream_map = re.search(r'<pre\b[^>]*\bwelcome-map\b[^>]*>(.*?)</pre>', resolution, re.DOTALL)
             self.assertIsNotNone(upstream_map)
-            self.assertIn(upstream_map[1], home)
-            for credit in ("Pipi Portilla", "ChatGPT", "Claude", "Universidad Politécnica de Madrid"):
-                with self.subTest(credit=credit):
-                    self.assertIn(credit, home)
+            self.assertNotIn(upstream_map[1], home)
+            headings = re.findall(r'<h1\b([^>]*)>(.*?)</h1>', home, re.DOTALL)
+            self.assertEqual(len(headings), 1)
+            attributes, content = headings[0]
+            label = re.search(r'\baria-label="([^"]*)"', attributes)
+            self.assertEqual(label[1] if label else re.sub(r"<[^>]+>", "", content).strip(), "Atlas")
+            copy = " ".join(re.sub(r"<[^>]+>", " ", home).split())
+            for phrase in ("Software for algebra and resolution of singularities", "by p portilla",
+                           "ChatGPT", "Claude", "Universidad Politécnica de Madrid"):
+                with self.subTest(phrase=phrase):
+                    self.assertIn(phrase, copy)
             links = PageLinks()
             links.feed(home)
             self.assertNotIn("sidebar", links.ids)

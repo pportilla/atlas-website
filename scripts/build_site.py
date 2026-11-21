@@ -3,8 +3,8 @@
 
 The project homepage is a standalone page in static/index.html. In static/ HTML
 files, @ATLAS_REVISION@ and @ATLAS_SHORT@ expand to the full and abbreviated
-Atlas commit SHA. @ATLAS_WORDMARK@ and @ATLAS_MAP@ expand to the wordmark and
-lettered map from that commit. Install the Atlas checkout's
+Atlas commit SHA. @ATLAS_WORDMARK@ expands to the terminal wordmark from that
+commit. Install the Atlas checkout's
 requirements-docs.txt in this Python environment before running the build.
 
     python3 scripts/build_site.py --atlas ../atlas --out dist
@@ -132,9 +132,9 @@ def render_brand(atlas):
     """Read the actual terminal and resolution artwork from the pinned checkout."""
     command = (
         "import json; from pathlib import Path; "
-        "from engine.web_brand import wordmark_html, lettered_map_html, fill_brand; "
+        "from engine.web_brand import wordmark_html, fill_brand; "
         "pages = [fill_brand(Path('web', name).read_text()) for name in ('index.html', 'zoo.html')]; "
-        "print(json.dumps([wordmark_html(), lettered_map_html(), *pages]))"
+        "print(json.dumps([wordmark_html(), *pages]))"
     )
     return json.loads(subprocess.check_output([sys.executable, "-c", command], cwd=atlas, text=True))
 
@@ -201,9 +201,9 @@ def build(atlas, out):
         subprocess.run(["git", "checkout", "--quiet", "--detach", revision], cwd=source, check=True)
         site = Path(temp) / "site"
         shutil.copytree(ROOT / "static", site)
-        wordmark, lettered_map, resolution, zoo = render_brand(source)
+        wordmark, resolution, zoo = render_brand(source)
         substitutions = {"@ATLAS_REVISION@": revision, "@ATLAS_SHORT@": revision[:7],
-                         "@ATLAS_WORDMARK@": wordmark, "@ATLAS_MAP@": lettered_map}
+                         "@ATLAS_WORDMARK@": wordmark}
         for page in site.rglob("*.html"):
             html = page.read_text(encoding="utf-8")
             for token, value in substitutions.items():

@@ -6,7 +6,6 @@
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="Atlas is a computer algebra system for studying singularities. Read the manual, open the terminal, resolve a hypersurface, or explore the Resolution Zoo.">
   <title>Atlas · Algebra and resolution of singularities</title>
-  <link rel="icon" href="docs/_static/atlas-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="docs/_static/identity.css">
   <link rel="stylesheet" href="home.css">
   <script>try { const theme = localStorage.getItem("atlas-theme"); if (theme) document.documentElement.dataset.theme = theme; } catch {}</script>
@@ -14,10 +13,11 @@
 </head>
 <body>
   <a class="skip-link" href="#destinations">Skip to Atlas destinations</a>
-  <header class="site-header">
-    <div class="wrap header-inner">
+  <header class="wrap masthead">
+    <h1 class="visually-hidden">Atlas</h1>
+    <div class="masthead-line">
       <a class="site-brand" href="./" aria-label="Atlas home">
-        <img src="docs/_static/atlas-mark.svg" width="33" height="33" alt=""> Atlas
+        <pre class="ascii-art" aria-hidden="true">@ATLAS_WORDMARK@</pre>
       </a>
       <div class="header-actions">
         <a class="repository" href="https://github.com/pportilla/atlas">
@@ -29,66 +29,57 @@
         </button>
       </div>
     </div>
+    <p class="subtitle">Software for algebra and resolution of singularities</p>
+    <p class="summary">Compute local invariants of polynomial equations, follow a resolution through its blowups, and inspect how the exceptional divisors meet.</p>
   </header>
 
-  <main>
-    <section class="masthead" aria-labelledby="project-title">
-      <div class="wrap masthead-inner">
-        <div class="logo-plate" aria-hidden="true">
-          <pre class="ascii-art">@ATLAS_MAP@</pre>
+  <main class="wrap" id="destinations" tabindex="-1">
+    <nav class="destinations" aria-label="Atlas destinations">
+      <a class="destination" href="docs/">
+        <div class="entry-icon" aria-hidden="true">
+          <svg viewBox="0 0 80 56"><g stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+            <path fill="var(--wash)" d="M7 13q17-5 33 4 16-9 33-4v32q-17-4-33 4-16-8-33-4z"/>
+            <path fill="var(--paper)" d="M10 9q16-3 30 6 14-9 30-6v32q-16-3-30 6-14-9-30-6z"/>
+            <path fill="none" d="M40 15v32m-24-29q9 0 17 4m-17 3q9 0 17 4m13-7q8-4 17-4m-17 11q8-4 17-4"/>
+          </g></svg>
         </div>
-        <div class="project-intro">
-          <h1 id="project-title"><span class="visually-hidden">Atlas. </span>Algebra and resolution of singularities.</h1>
-          <p>Atlas is a computer algebra system for studying polynomial equations near a singular point. Compute local invariants and follow a resolution through its blowups and charts.</p>
+        <h2>Manual</h2>
+        <p>Tutorials, worked examples, and a reference for Atlas functions.</p>
+      </a>
+      <a class="destination" href="terminal/">
+        <div class="entry-icon" aria-hidden="true">
+          <svg viewBox="0 0 80 56"><g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="7" y="5" width="66" height="46" rx="3" fill="var(--paper)"/>
+            <path fill="var(--wash)" d="M10 5h60q3 0 3 3v7H7V8q0-3 3-3Z"/>
+            <path fill="none" stroke-width="3" d="m19 25 7 6-7 6m15 0h12"/>
+            <path d="M13 10h1m4 0h1" />
+          </g></svg>
         </div>
-      </div>
-    </section>
-
-    <section class="wrap explore" id="destinations" tabindex="-1" aria-labelledby="explore-heading">
-      <h2 id="explore-heading">Explore Atlas</h2>
-      <nav class="destination-grid" aria-label="Atlas destinations">
-        <a class="destination manual" href="docs/">
-          <div class="plate" aria-hidden="true">
-            <svg viewBox="0 0 80 56"><g stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
-              <path fill="var(--icon-fill)" d="M7 13q17-5 33 4 16-9 33-4v32q-17-4-33 4-16-8-33-4z"/>
-              <path fill="var(--icon-paper)" d="M10 9q16-3 30 6 14-9 30-6v32q-16-3-30 6-14-9-30-6z"/>
-              <path fill="none" d="M40 15v32m-24-29q9 0 17 4m-17 3q9 0 17 4m13-7q8-4 17-4m-17 11q8-4 17-4"/>
-            </g></svg>
-          </div>
-          <div class="card-copy"><h3>Manual</h3><p>Learn Atlas with tutorials, worked examples, and the function reference.</p></div>
-        </a>
-        <a class="destination terminal" href="terminal/">
-          <div class="plate" aria-hidden="true">
-            <svg viewBox="0 0 80 56"><g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="7" y="5" width="66" height="46" rx="3" fill="var(--icon-paper)"/>
-              <path fill="var(--icon-fill)" d="M10 5h60q3 0 3 3v7H7V8q0-3 3-3Z"/>
-              <path fill="none" stroke-width="3" d="m19 25 7 6-7 6m15 0h12"/>
-              <path d="M13 10h1m4 0h1" />
-            </g></svg>
-          </div>
-          <div class="card-copy"><h3>Terminal</h3><p>Open the Atlas prompt and run computations on your own computer, in the browser.</p></div>
-        </a>
-        <a class="destination suite" href="resolution/">
-          <div class="plate" aria-hidden="true">
-            <svg viewBox="0 0 80 56"><g stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-              <path fill="none" d="M10 39 30 28 53 12m-23 16 22 7 16 11"/>
-              <g fill="var(--icon-paper)"><circle cx="10" cy="39" r="4.5"/><circle cx="53" cy="12" r="5.5"/><circle cx="52" cy="35" r="5"/><circle cx="68" cy="46" r="4"/></g>
-              <circle cx="30" cy="28" r="6" fill="var(--icon-fill)"/>
-            </g></svg>
-          </div>
-          <div class="card-copy"><h3>Resolution suite</h3><p>Resolve a hypersurface and inspect its charts, exceptional divisors, and zeta functions.</p></div>
-        </a>
-        <a class="destination zoo" href="zoo/">
-          <div class="plate" aria-hidden="true"><img src="zoo/zoo-mark.svg" alt="" width="66" height="66"></div>
-          <div class="card-copy"><h3>Resolution Zoo</h3><p>Browse computed examples or search by monomials to find a singularity of interest.</p></div>
-        </a>
-      </nav>
-    </section>
+        <h2>Terminal</h2>
+        <p>Run Atlas commands in your browser. Computations take place on your computer.</p>
+      </a>
+      <a class="destination" href="resolution/">
+        <div class="entry-icon" aria-hidden="true">
+          <svg viewBox="0 0 80 56"><g stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+            <path fill="none" d="M10 39 30 28 53 12m-23 16 22 7 16 11"/>
+            <g fill="var(--paper)"><circle cx="10" cy="39" r="4.5"/><circle cx="53" cy="12" r="5.5"/><circle cx="52" cy="35" r="5"/><circle cx="68" cy="46" r="4"/></g>
+            <circle cx="30" cy="28" r="6" fill="var(--wash)"/>
+          </g></svg>
+        </div>
+        <h2>Resolution suite</h2>
+        <p>Resolve a hypersurface and examine its charts, divisors, and zeta functions.</p>
+      </a>
+      <a class="destination" href="zoo/">
+        <div class="entry-icon" aria-hidden="true"><img src="zoo/zoo-mark.svg" alt="" width="66" height="66"></div>
+        <h2>Resolution Zoo</h2>
+        <p>Browse the catalogue of resolved singularities or search by monomials.</p>
+      </a>
+    </nav>
   </main>
 
   <footer class="wrap credits">
     <div>
-      <p class="byline">By <a href="https://pportilla.github.io/">Pipi Portilla</a></p>
+      <p class="byline">by <a href="https://pportilla.github.io/">p portilla</a></p>
       <p>Universidad Politécnica de Madrid</p>
     </div>
     <div class="contact">
