@@ -18,7 +18,27 @@ test("browse and search the published catalogue without a resolution runtime", a
   const query = page.getByRole("searchbox", { name: "Search by monomials" });
   await query.fill("1/2*a*b^3, -b^4");
   await expect(page.locator("#zoo-count")).toHaveText("1 record");
-  await expect(page.locator("#zoo-detail h2")).toContainText("Quartic cone with a rational mixed coefficient");
+  const detail = page.locator("#zoo-detail");
+  const equation = "x^4 - 1/2*x*y^3 + x*y*z^2 + y^4 + z^4 = 0";
+  await expect(detail.locator("h2").getByRole("math")).toHaveAccessibleName(equation);
+  const row = page.locator("#zoo-list a");
+  await expect(row.getByRole("math")).toHaveAccessibleName(equation);
+  expect(await row.innerText()).toBe(await row.getByRole("math").innerText());
+  await expect(detail.locator(".zoo-record-name")).toContainText("Quartic cone with a rational mixed coefficient");
+  const metadata = detail.locator("h2, .zoo-record-name, .zoo-tags");
+  await expect(metadata.nth(0)).toHaveRole("heading");
+  await expect(metadata.nth(1)).toContainText("Quartic cone with a rational mixed coefficient");
+  await expect(metadata.nth(2)).toHaveAccessibleName("Labels");
+
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(page.url()).origin });
+  await detail.getByRole("button", { name: "Copy LaTeX", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "x^{4} - \\frac{1}{2}xy^{3} + xyz^{2} + y^{4} + z^{4}"
+  );
+  await detail.getByRole("button", { name: "Copy Python", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "x**4 - x*y**3/2 + x*y*z**2 + y**4 + z**4"
+  );
   await page.locator("#zoo-detail summary").filter({ hasText: "Topological zeta function" }).click();
   await expect(page.locator("#zoo-detail .zoo-expression").last()).toBeVisible();
 
