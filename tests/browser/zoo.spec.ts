@@ -49,6 +49,9 @@ test("the colour theme selected on the homepage follows the reader into each too
   expect(dark).not.toBe(light);
   for (const path of ["docs/", "terminal/", "resolution/", "zoo/"]) {
     await page.goto(path);
+    if (path === "terminal/" || path === "resolution/") {
+      await page.waitForFunction(() => crossOriginIsolated);
+    }
     await expect(page.locator("body")).toHaveCSS("background-color", dark);
   }
 });
