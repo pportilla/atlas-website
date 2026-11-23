@@ -145,7 +145,7 @@ class BuildTests(unittest.TestCase):
             label = re.search(r'\baria-label="([^"]*)"', attributes)
             self.assertEqual(label[1] if label else re.sub(r"<[^>]+>", "", content).strip(), "Atlas")
             copy = " ".join(re.sub(r"<[^>]+>", " ", home).split())
-            for phrase in ("Software for algebra and resolution of singularities", "by p portilla",
+            for phrase in ("Computer algebra software with a focus on resolution of singularities", "by p portilla",
                            "ChatGPT", "Claude", "Universidad Politécnica de Madrid"):
                 with self.subTest(phrase=phrase):
                     self.assertIn(phrase, copy)
@@ -155,9 +155,8 @@ class BuildTests(unittest.TestCase):
             site = "https://example.github.io/atlas-website/"
             self.assertCountEqual(
                 [urljoin(site, href) for href in links.destinations],
-                [site + route for route in ("docs/", "terminal/", "resolution/", "zoo/")],
+                [site + route for route in ("docs/", "terminal/", "resolution/", "zoo/")] + [build_site.ATLAS_URL],
             )
-            self.assertIn(build_site.ATLAS_URL, links.links)
             self.assertIn("mailto:p.portilla@upm.es", links.links)
             for url in links.urls:
                 parsed = urlsplit(url)
