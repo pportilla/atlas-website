@@ -182,7 +182,7 @@ class BuildTests(unittest.TestCase):
             label = re.search(r'\baria-label="([^"]*)"', attributes)
             self.assertEqual(label[1] if label else re.sub(r"<[^>]+>", "", content).strip(), "Atlas")
             copy = " ".join(re.sub(r"<[^>]+>", " ", home).split())
-            for phrase in ("Computer algebra software with a focus on resolution of singularities", "by p portilla",
+            for phrase in ("Computer Algebra System with a focus on resolution of singularities", "by p portilla",
                            "ChatGPT", "Claude", "Universidad Politécnica de Madrid"):
                 with self.subTest(phrase=phrase):
                     self.assertIn(phrase, copy)
