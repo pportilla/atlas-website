@@ -2,6 +2,7 @@
 set -e
 export PATH=/bin:/usr/bin:/opt/atlas HOME=/tmp TERM=xterm-256color
 export LANG=C.UTF-8 PYTHONDONTWRITEBYTECODE=1 ATLAS_ROOT=/opt/atlas
+export ATLAS_ZOO_DIR=/opt/atlas/web/zoo-data
 /bin/busybox mount -t proc proc /proc
 /bin/busybox mount -t sysfs sysfs /sys
 /bin/busybox mount -t devtmpfs devtmpfs /dev

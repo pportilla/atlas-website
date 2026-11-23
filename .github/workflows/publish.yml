@@ -34,18 +34,27 @@ jobs:
           path: upstream
           ssh-key: ${{ secrets.ATLAS_DEPLOY_KEY }}
           persist-credentials: false
-      - name: Identify the manual and runtime version
+      - name: Check out the current Resolution Zoo main revision
+        uses: actions/checkout@v6
+        with:
+          repository: pportilla/resolution-zoo
+          ref: main
+          path: catalogue
+          persist-credentials: false
+      - name: Identify the website, Atlas and catalogue revisions
         id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           sha=$(git -C upstream rev-parse HEAD)
+          zoo=$(git -C catalogue rev-parse HEAD)
+          echo "zoo=$zoo" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "runtime=$(git rev-parse HEAD:runtime)" >> "$GITHUB_OUTPUT"
           pages=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url)
           if [[ "$GITHUB_EVENT_NAME" == schedule ]] && \
-             curl -fsSL "${pages%/}/version.json" | jq -e --arg a "$sha" --arg w "$GITHUB_SHA" '.atlas==$a and .website==$w' >/dev/null; then
+             curl -fsSL "${pages%/}/version.json" | jq -e --arg a "$sha" --arg w "$GITHUB_SHA" --arg z "$zoo" '.atlas==$a and .website==$w and .zoo==$z' >/dev/null; then
             echo 'publish=false' >> "$GITHUB_OUTPUT"
           else
             echo 'publish=true' >> "$GITHUB_OUTPUT"
@@ -58,8 +67,8 @@ jobs:
       - name: Compile and verify the website and documentation
         if: steps.version.outputs.publish == 'true'
         env:
+          ATLAS_ZOO_DIR: ${{ github.workspace }}/catalogue
           ATLAS_CHECKOUT: ${{ github.workspace }}/upstream
-          ATLAS_SHA: ${{ steps.version.outputs.sha }}
         run: |
           set -euo pipefail
           git clone --quiet --depth 1 --branch 3.1.64 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
@@ -71,27 +80,28 @@ jobs:
           pip install -r upstream/requirements-docs.txt
           (cd upstream && python3 -m unittest tests.test_docs_site)
           python3 -m unittest discover -s tests
-          python3 scripts/build_site.py --atlas upstream --out dist
+          python3 scripts/build_site.py --atlas upstream --zoo catalogue --out dist
           npm ci
           npm run check
           npm run build
-          jq -n --arg a "$ATLAS_SHA" --arg w "$GITHUB_SHA" '{atlas:$a, website:$w}' > dist/version.json
       - name: Restore the browser runtime for this exact Atlas revision
         if: steps.version.outputs.publish == 'true'
         id: vm
         uses: actions/cache@v5
         with:
           path: dist/vm
-          key: browser-vm-${{ steps.version.outputs.sha }}-${{ steps.version.outputs.runtime }}-${{ hashFiles('src/emulator.ts', '.dockerignore', 'package-lock.json') }}
+          key: browser-vm-${{ steps.version.outputs.sha }}-${{ steps.version.outputs.zoo }}-${{ steps.version.outputs.runtime }}-${{ hashFiles('src/emulator.ts', '.dockerignore', 'package-lock.json') }}
       - name: Package the native Atlas binaries and WebAssembly emulator
         if: steps.version.outputs.publish == 'true' && steps.vm.outputs.cache-hit != 'true'
         env:
           ATLAS_SHA: ${{ steps.version.outputs.sha }}
+          ZOO_SHA: ${{ steps.version.outputs.zoo }}
         run: |
           set -euo pipefail
           mkdir "$RUNNER_TEMP/atlas-source"
           git -C upstream archive "$ATLAS_SHA" | tar xf - -C "$RUNNER_TEMP/atlas-source"
-          docker buildx build --platform linux/amd64 --build-context "atlas=$RUNNER_TEMP/atlas-source" --build-arg "ATLAS_REVISION=$ATLAS_SHA" \
+          docker buildx build --platform linux/amd64 --build-context "atlas=$RUNNER_TEMP/atlas-source" --build-context "catalogue=dist/zoo/zoo-data" \
+            --build-arg "ATLAS_REVISION=$ATLAS_SHA" --build-arg "ZOO_REVISION=$ZOO_SHA" \
             -f runtime/browser/Dockerfile --output type=local,dest=dist/vm .
           python3 runtime/browser/fetch_emulator.py dist/vm
       - name: Install the browser for packaging and verification
@@ -104,18 +114,21 @@ jobs:
         if: steps.version.outputs.publish == 'true'
         env:
           ATLAS_SHA: ${{ steps.version.outputs.sha }}
+          ZOO_SHA: ${{ steps.version.outputs.zoo }}
         run: |
           set -euo pipefail
           test "$(cat dist/vm/REVISION)" = "$ATLAS_SHA"
+          test "$(cat dist/vm/ZOO_REVISION)" = "$ZOO_SHA"
           npm run test:browser
       - name: Publish the precompiled local edition
         if: steps.version.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           ATLAS_SHA: ${{ steps.version.outputs.sha }}
+          ZOO_SHA: ${{ steps.version.outputs.zoo }}
         run: |
           set -euo pipefail
-          tag="local-${ATLAS_SHA:0:12}-${GITHUB_SHA:0:12}"
+          tag="local-${ATLAS_SHA:0:12}-${GITHUB_SHA:0:12}-${ZOO_SHA:0:12}"
           if ! gh release view "$tag" --json isDraft,assets | jq -e '(.isDraft|not) and any(.assets[]; .name=="atlas-local.zip")' >/dev/null; then
             (cd dist && zip -qr "$RUNNER_TEMP/atlas-local.zip" . -x '.atlas-website-output' '.nojekyll' 'vm/atlas.cpio.gz' 'vm/vmlinuz')
             if ! gh release view "$tag" >/dev/null 2>&1; then

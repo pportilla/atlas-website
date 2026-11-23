@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Atlas website from a website template and an Atlas git checkout.
+"""Build the Atlas website from committed Atlas and Resolution Zoo sources.
 
 The project homepage is a standalone page in static/index.html. In static/ HTML
 files, @ATLAS_REVISION@ and @ATLAS_SHORT@ expand to the full and abbreviated
@@ -7,31 +7,34 @@ Atlas commit SHA. @ATLAS_WORDMARK@ expands to the terminal wordmark from that
 commit. Install the Atlas checkout's
 requirements-docs.txt in this Python environment before running the build.
 
-    python3 scripts/build_site.py --atlas ../atlas --out dist
+    python3 scripts/build_site.py --atlas ../atlas --zoo ../resolution-zoo --out dist
 """
 import argparse
 from collections import defaultdict
 from html import escape
 from html.parser import HTMLParser
 import json
+import os
 from pathlib import Path
 import posixpath
 import re
 import shutil
 import subprocess
 import sys
-from tempfile import TemporaryDirectory
+import tarfile
+from tempfile import TemporaryDirectory, TemporaryFile
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 ATLAS_URL = "https://github.com/pportilla/atlas"
+ZOO_URL = "https://github.com/pportilla/resolution-zoo"
 SEARCH_ASSIGNMENT = "window.ATLAS_SEARCH = "
 BUILD_MARKER = ".atlas-website-output"
 UPSTREAM_LINK = re.compile(r"""(<a\b[^>]*?\shref=["']""" + re.escape(ATLAS_URL) + r"/(?:blob|tree)/)main/")
 
 
-def revision_of(atlas):
-    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=atlas, text=True).strip()
+def revision_of(checkout):
+    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=checkout, text=True).strip()
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError(f"Expected a GitHub commit SHA, got {sha!r}")
     return sha
@@ -103,12 +106,14 @@ def zoo_link(href):
             f'<img src="{href}zoo-mark.svg" width="22" height="22" alt=""> <span>Resolution Zoo</span></a>')
 
 
-def prepare_manual(atlas, docs, revision):
+def prepare_manual(atlas, docs, revision, zoo_revision):
     subprocess.run([sys.executable, "docs/site/build.py", "--out", str(docs)], cwd=atlas, check=True)
     for file in docs.rglob("*.html"):
         page = file.relative_to(docs).as_posix()
 
         revised = pin_source_links(file.read_text(encoding="utf-8"), revision)
+        for kind in ("blob", "tree"):
+            revised = revised.replace(f'href="{ZOO_URL}/{kind}/main/', f'href="{ZOO_URL}/{kind}/{zoo_revision}/')
         footer_end = "</footer>"
         if revised.count(footer_end) != 1:
             raise ValueError(f"Cannot locate the Atlas documentation footer in {page}")
@@ -161,12 +166,35 @@ def prepare_resolution(atlas, site, upstream):
     (target / "index.html").write_text(page, encoding="utf-8")
 
 
-def prepare_zoo(atlas, site, upstream):
+def export_catalogue(checkout, revision, destination):
+    """Stage the committed index, schema and indexed JSON records for offline use."""
+    (destination / "records").mkdir(parents=True)
+    with TemporaryFile() as snapshot:
+        subprocess.run(["git", "archive", "--format=tar", revision, "--", "index.json", "schema.json", "records"],
+                       cwd=checkout, stdout=snapshot, check=True)
+        snapshot.seek(0)
+        with tarfile.open(fileobj=snapshot, mode="r|") as archive:
+            for member in archive:
+                if member.name not in {"index.json", "schema.json"} and not re.fullmatch(
+                        r"records/[a-z0-9]+(?:-[a-z0-9]+)*\.json", member.name):
+                    continue
+                if not member.isfile():
+                    raise ValueError(f"Expected a JSON file in Resolution Zoo: {member.name}")
+                with (destination / member.name).open("wb") as target:
+                    shutil.copyfileobj(archive.extractfile(member), target)
+    entries = json.loads((destination / "index.json").read_bytes())["entries"]
+    ids = {entry["id"] for entry in entries}
+    if len(ids) != len(entries) or ids != {path.stem for path in (destination / "records").iterdir()}:
+        raise ValueError("Resolution Zoo index and record IDs disagree")
+
+
+def prepare_zoo(atlas, site, upstream, catalogue, zoo_revision):
     """Stage the recorded results and compile the native matcher used at the Atlas prompt."""
     target = site / "zoo"
     for asset in ("zoo.css", "zoo.js", "zoo-mark.svg"):
         shutil.copy2(atlas / "web" / asset, target / asset)
-    shutil.copytree(atlas / "web/zoo-data", target / "zoo-data")
+    export_catalogue(catalogue, zoo_revision, target / "zoo-data")
+    upstream = upstream.replace(f'href="{ZOO_URL}"', f'href="{ZOO_URL}/tree/{zoo_revision}"')
     shared = ("atlas-mark.svg", "identity.css", "style.css", "resolution.css", "complex.css",
               "exact-json.js", "typeset.js", "dual-graph.js")
     for asset in shared:
@@ -180,12 +208,13 @@ def prepare_zoo(atlas, site, upstream):
                     "-sEXPORTED_RUNTIME_METHODS=UTF8ToString", "-o", str(target / "zoo-kernel.mjs")], check=True)
 
 
-def build(atlas, out):
+def build(atlas, out, catalogue=None):
     atlas = atlas.resolve(strict=True)
+    catalogue = Path(catalogue or os.environ.get("ATLAS_ZOO_DIR", atlas.parent / "resolution-zoo")).resolve(strict=True)
     if out.is_symlink():
         raise ValueError(f"Choose an output directory instead of a symlink: {out}")
     out = out.resolve()
-    if out == ROOT or out in ROOT.parents or out == atlas or out in atlas.parents:
+    if any(out == source or out in source.parents for source in (ROOT, atlas, catalogue)) or out.is_relative_to(catalogue):
         raise ValueError("Choose a build output separate from the repository roots.")
     if out.is_relative_to(ROOT / "static"):
         raise ValueError("Choose a build output outside the static source directory.")
@@ -193,6 +222,7 @@ def build(atlas, out):
         raise ValueError(f"Choose an empty output directory: {out}")
     out.parent.mkdir(parents=True, exist_ok=True)
     revision = revision_of(atlas)
+    zoo_revision = revision_of(catalogue)
     with TemporaryDirectory(dir=out.parent) as temp:
         # The manual includes version and source-line links. Read only committed files,
         # even when another process is currently editing the input working tree.
@@ -209,9 +239,11 @@ def build(atlas, out):
             for token, value in substitutions.items():
                 html = html.replace(token, value)
             page.write_text(html, encoding="utf-8")
-        prepare_manual(source, site / "docs", revision)
+        prepare_manual(source, site / "docs", revision, zoo_revision)
         prepare_resolution(source, site, resolution)
-        prepare_zoo(source, site, zoo)
+        prepare_zoo(source, site, zoo, catalogue, zoo_revision)
+        versions = {"atlas": revision, "website": revision_of(ROOT), "zoo": zoo_revision}
+        (site / "version.json").write_text(json.dumps(versions) + "\n", encoding="utf-8")
         (site / ".nojekyll").touch()
         (site / BUILD_MARKER).touch()
         # Stage in the destination filesystem so a failed compile preserves the previous site.
@@ -230,9 +262,10 @@ def build(atlas, out):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--atlas", type=Path, required=True, help="Atlas source checkout")
+    parser.add_argument("--zoo", type=Path, help="Resolution Zoo checkout (default: ATLAS_ZOO_DIR or sibling resolution-zoo)")
     parser.add_argument("--out", type=Path, required=True, help="generated website directory")
     args = parser.parse_args()
-    revision = build(args.atlas, args.out)
+    revision = build(args.atlas, args.out, args.zoo)
     print(f"Built {args.out} from Atlas {revision}")
 
 

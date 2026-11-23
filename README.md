@@ -2,7 +2,7 @@
 
 [Open the website](https://pportilla.github.io/atlas-website/) for the [manual](https://pportilla.github.io/atlas-website/docs/), [Atlas terminal](https://pportilla.github.io/atlas-website/terminal/), [Resolution Zoo](https://pportilla.github.io/atlas-website/zoo/), and [resolution suite](https://pportilla.github.io/atlas-website/resolution/).
 
-The Zoo loads saved JSON records on demand and searches them with the native monomial matcher compiled to WebAssembly. Browsing and searching also work in the offline edition.
+The Zoo loads saved JSON records from the published snapshot on demand and searches them with the native monomial matcher compiled to WebAssembly. The catalogue source link on the Zoo page opens the exact revision of the [Resolution Zoo repository](https://github.com/pportilla/resolution-zoo) used by that edition. Browsing and searching also work in the offline edition.
 
 The terminal and resolution suite run on the visitor’s computer. When you start the terminal or submit a polynomial, the browser downloads a precompiled Atlas runtime and boots it in a Web Worker. It needs a recent desktop browser with WebAssembly threads, JavaScript, and enough memory for a Linux guest. The manual is available immediately. Closing the tab ends the session. Use **Download JSON** to keep a resolution record.
 
@@ -20,33 +20,35 @@ A project-scoped service worker supplies the isolation headers needed for WebAss
 
 ## Automatic publication
 
-The **Publish Atlas** workflow runs on pushes to this website, checks [Atlas main](https://github.com/pportilla/atlas) hourly, and supports manual runs. It compiles the full manual, packages the native runtime, and runs both tools in Chromium against a static server. GitHub Pages deploys after those checks pass. [version.json](https://pportilla.github.io/atlas-website/version.json) records both repository revisions.
+The **Publish Atlas** workflow runs on pushes to this website, checks the main branches of [Atlas](https://github.com/pportilla/atlas) and the [Resolution Zoo](https://github.com/pportilla/resolution-zoo) hourly, and publishes when either changes. Maintainers can start a build immediately with `gh workflow run publish.yml --repo pportilla/atlas-website`. It compiles the full manual, packages the native runtime, and runs both tools in Chromium against a static server. GitHub Pages deploys after those checks pass. [version.json](https://pportilla.github.io/atlas-website/version.json) records the Atlas, website and Zoo revisions.
 
 Set the website repository’s Pages publishing source to **GitHub Actions**. While the mother repository is private, `ATLAS_DEPLOY_KEY` is a read-only deploy key for Atlas. The full manual, its linked source views, and the executable browser runtime are public.
 
 ## Build and run locally
 
-Use sibling clones of this repository and Atlas. Install Python 3.10 or later, Node.js 22 with npm, Emscripten (publication uses `em++` 3.1.64), and Docker with Buildx for Linux x86-64 builds. From the website checkout, build the website first:
+Clone Atlas and the Resolution Zoo alongside this website checkout. The build reads committed data from the Zoo checkout selected by `--zoo`, `ATLAS_ZOO_DIR`, or the `resolution-zoo` directory next to Atlas. Install Python 3.10 or later, Node.js 22 with npm, Emscripten (publication uses `em++` 3.1.64), and Docker with Buildx for Linux x86-64 builds. From the website checkout, build the website first:
 
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -r ../atlas/requirements-docs.txt
 python3 -m unittest discover -s tests
-python3 scripts/build_site.py --atlas ../atlas --out dist
+python3 scripts/build_site.py --atlas ../atlas --zoo ../resolution-zoo --out dist
 npm ci
 npm run check
 npm run build
 ```
 
-Package the runtime from a clean export of that commit:
+Package the runtime from the same Atlas commit and the catalogue index staged by the website build.
 
 ```sh
 atlas_source=$(mktemp -d)
-atlas_revision=$(git -C ../atlas rev-parse HEAD)
+atlas_revision=$(python3 -c 'import json; print(json.load(open("dist/version.json"))["atlas"])')
+zoo_revision=$(python3 -c 'import json; print(json.load(open("dist/version.json"))["zoo"])')
 git -C ../atlas archive "$atlas_revision" | tar xf - -C "$atlas_source"
 docker buildx build --platform linux/amd64 --build-context "atlas=$atlas_source" \
-  --build-arg "ATLAS_REVISION=$atlas_revision" -f runtime/browser/Dockerfile \
+  --build-context "catalogue=dist/zoo/zoo-data" \
+  --build-arg "ATLAS_REVISION=$atlas_revision" --build-arg "ZOO_REVISION=$zoo_revision" -f runtime/browser/Dockerfile \
   --output type=local,dest=dist/vm .
 python3 runtime/browser/fetch_emulator.py dist/vm
 npx playwright install chromium

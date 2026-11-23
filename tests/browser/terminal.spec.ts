@@ -33,6 +33,10 @@ test("the terminal accepts a command during startup and continues the native ses
   await page.keyboard.type('print("Milnor result", milnor_number(y^2 - x^3).value)');
   await page.keyboard.press("Enter");
   await expect(rows).toContainText("Milnor result 2", { timeout: 70_000 });
+  const catalogue = await (await page.request.get("zoo/zoo-data/index.json")).json();
+  await page.keyboard.type('print("Zoo records", len(zoo_search("").ids))');
+  await page.keyboard.press("Enter");
+  await expect(rows).toContainText(`Zoo records ${catalogue.entries.length}`, { timeout: 70_000 });
   await page.getByRole("button", { name: "Stop session" }).click();
   await expect(page.getByRole("button", { name: "Start terminal" })).toBeEnabled();
 });

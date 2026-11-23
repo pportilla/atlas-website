@@ -14,5 +14,5 @@ mkdir -p "$dest/native/build"
 # symlinks such as native/build/ideal_sum -> local_algebra.
 find "$build_dir/native/build" -maxdepth 1 \( -type f -o -type l \) -exec cp -a -t "$dest/native/build/" {} +
 find "$dest/native/build" -type f -exec strip --strip-unneeded {} +
-tar -C "$upstream" --exclude='__pycache__' -cf "$build_dir/runtime.tar" atlas engine web
+tar -C "$upstream" --exclude='__pycache__' --exclude='web/zoo-data' -cf "$build_dir/runtime.tar" atlas engine web
 tar -C "$dest" -xf "$build_dir/runtime.tar"

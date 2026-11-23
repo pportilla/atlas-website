@@ -39,6 +39,33 @@ class ManualLinksTests(unittest.TestCase):
                 build_site.audit_search(docs)
 
 
+class CatalogueExportTests(unittest.TestCase):
+    def test_only_committed_json_is_published_and_index_has_every_record(self):
+        with tempfile.TemporaryDirectory() as temp:
+            checkout = Path(temp) / "catalogue"
+            records = checkout / "records"
+            records.mkdir(parents=True)
+            (records / "curve.json").write_text('{"id":"curve"}')
+            (records / "notes.txt").write_text("notes")
+            (checkout / "index.json").write_text('{"entries":[{"id":"curve"}]}')
+            (checkout / "schema.json").write_text("{}")
+            (checkout / "seeds.json").write_text("[]")
+            subprocess.run(["git", "init", "-q"], cwd=checkout, check=True)
+            subprocess.run(["git", "add", "."], cwd=checkout, check=True)
+            commit = ["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm"]
+            subprocess.run([*commit, "Initial catalogue"], cwd=checkout, check=True)
+            revision = build_site.revision_of(checkout)
+            (records / "curve.json").unlink()
+            (records / "draft.json").write_text("{}")
+            destination = Path(temp) / "edition"
+            build_site.export_catalogue(checkout, revision, destination)
+            self.assertEqual({p.relative_to(destination).as_posix() for p in destination.rglob("*") if p.is_file()},
+                             {"index.json", "schema.json", "records/curve.json"})
+            subprocess.run([*commit, "Missing record", "-a"], cwd=checkout, check=True)
+            with self.assertRaisesRegex(ValueError, "index and record IDs disagree"):
+                build_site.export_catalogue(checkout, build_site.revision_of(checkout), Path(temp) / "invalid")
+
+
 class PageLinks(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -121,7 +148,17 @@ class BuildTests(unittest.TestCase):
             self.assertIn('src="./zoo.js"', zoo)
             self.assertNotIn("<!--atlas:", zoo)
             self.assertFalse((out / "resolution/zoo-data").exists())
-            index = json.loads((out / "zoo/zoo-data/index.json").read_text())
+            catalogue = Path(os.environ.get("ATLAS_ZOO_DIR", ATLAS.parent / "resolution-zoo"))
+            zoo_sha = build_site.revision_of(catalogue)
+            self.assertIn(f'href="{build_site.ZOO_URL}/tree/{zoo_sha}"', zoo)
+            self.assertEqual(json.loads((out / "version.json").read_bytes()),
+                             {"website": build_site.revision_of(build_site.ROOT), "atlas": sha, "zoo": zoo_sha})
+            data = out / "zoo/zoo-data"
+            self.assertEqual({p.name for p in data.iterdir()}, {"index.json", "schema.json", "records"})
+            for fixture in ("index.json", "schema.json", "records/mixed-quartic.json"):
+                committed = subprocess.check_output(["git", "show", f"{zoo_sha}:{fixture}"], cwd=catalogue)
+                self.assertEqual((data / fixture).read_bytes(), committed)
+            index = json.loads((data / "index.json").read_bytes())
             self.assertGreaterEqual(len(index["entries"]), 50)
             for entry in index["entries"]:
                 self.assertTrue((out / "zoo/zoo-data/records" / (entry["id"] + ".json")).is_file())

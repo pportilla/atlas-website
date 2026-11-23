@@ -12,6 +12,9 @@ FROM ${UBUNTU} AS guest
 RUN apt-get update && apt-get install -y --no-install-recommends \
     busybox-static python3 libflint24 libgmpxx4ldbl libjsoncpp26 libnormaliz3
 COPY --from=build /opt/atlas /opt/atlas
+COPY --from=catalogue index.json /opt/atlas/web/zoo-data/index.json
+ARG ZOO_REVISION
+RUN test "${#ZOO_REVISION}" = 40 && printf '%s\n' "$ZOO_REVISION" > /opt/atlas/ZOO_REVISION
 ARG ATLAS_REVISION
 RUN test "${#ATLAS_REVISION}" = 40 && printf '%s\n' "$ATLAS_REVISION" > /opt/atlas/REVISION
 COPY runtime/guest/bridge.py runtime/browser/init runtime/browser/make_guest.py /tmp/build/
@@ -21,3 +24,4 @@ RUN mkdir /out && python3 /tmp/build/make_guest.py --init /tmp/build/init \
 FROM scratch
 COPY --from=guest /out/ /
 COPY --from=guest /opt/atlas/REVISION /REVISION
+COPY --from=guest /opt/atlas/ZOO_REVISION /ZOO_REVISION
