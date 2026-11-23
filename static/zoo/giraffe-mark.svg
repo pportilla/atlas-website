@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Resolution Zoo giraffe</title>
+  <defs><clipPath id="coat"><path d="M11.5 29.5C17.5 27.5 24.5 25.5 30 21.5L37.8 30C38.6 34 37 37.5 33.5 39C26 40.6 19 40.6 14 39.5C9.5 38.4 8.5 32.5 11.5 29.5Z"/><path d="M28.5 24.5C33 18 37.5 11.5 41.5 6L49 10.5C45.5 17 41.2 23.8 37.6 30.6Z"/></clipPath></defs>
+  <path d="M19 38.5 19.6 48 19 57.5" fill="none" stroke="#c29353" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M29.5 38 30.2 48 29.5 57.5" fill="none" stroke="#c29353" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M10.8 31C8.2 34.5 7.4 39.5 7.4 44.5" fill="none" stroke="#c29353" stroke-width="1.3" stroke-linecap="round"/>
+  <path d="M7.4 43.2C8.9 44.6 8.9 47.6 7.3 48.8C5.8 47.6 5.9 44.6 7.4 43.2Z" fill="#5e3d22"/>
+  <g fill="#dcb06b"><path d="M11.5 29.5C17.5 27.5 24.5 25.5 30 21.5L37.8 30C38.6 34 37 37.5 33.5 39C26 40.6 19 40.6 14 39.5C9.5 38.4 8.5 32.5 11.5 29.5Z"/><path d="M28.5 24.5C33 18 37.5 11.5 41.5 6L49 10.5C45.5 17 41.2 23.8 37.6 30.6Z"/><path d="M40.5 7.5C41 3.5 46 2.5 49.5 4.5C52.5 6.5 56 8.5 58.5 10.5C60.3 12 59.6 14.6 57.2 15C53.8 15.6 50.5 14 47.5 12Z"/><path d="M42.5 6.2C39.5 4.8 36.6 5 35.2 6.8C37.5 8.2 40.5 8.3 42.6 7.3Z"/></g>
+  <path d="M14 38 12.8 48 14 57.5" fill="none" stroke="#dcb06b" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34.5 37 35.6 48 35 57.5" fill="none" stroke="#dcb06b" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <g clip-path="url(#coat)" fill="#a0682f" stroke="#dcb06b" stroke-width="1.5" stroke-linejoin="round"><path d="M0 44.8L0 13.6L15.3 33.3Z"/><path d="M0 0L10.9 0L19.3 30.6L16.1 33.4L15.3 33.3L0 13.6Z"/><path d="M10.9 0L13.5 0L15.1 2L24.9 28.7L22.1 31.4L19.3 30.6Z"/><path d="M27.7 16.6L30.8 26.7L27.7 29.4L24.8 28.6L15.1 2L18.3 4.9Z"/><path d="M50.4 31.5L33.2 33.2L33.2 27.6L37 26.5Z"/><path d="M6.6 64L0 64L0 44.8L15.3 33.3L16.1 33.4L17.7 36.3Z"/><path d="M17.7 36.3L16.1 33.4L19.3 30.6L22.1 31.3L23.4 34.8L22.1 36.7Z"/><path d="M23.4 34.8L22.1 31.4L24.9 28.6L27.7 29.4L28.9 33.5L27.8 34.8Z"/><path d="M27.7 29.4L30.8 26.7L33.2 27.6L33.2 33.2L33 33.5L28.9 33.5Z"/><path d="M28.9 64L6.6 64L17.7 36.3L22.1 36.7Z"/><path d="M33.2 64L28.9 64L22.1 36.7L23.4 34.8L27.8 34.8Z"/><path d="M39.1 64L33.2 64L27.8 34.7L28.9 33.5L33 33.5Z"/><path d="M64 34.1L64 64L39.1 64L33 33.5L33.2 33.2L50.4 31.5Z"/><path d="M35.3 21.1L37 26.5L33.2 27.6L30.8 26.7L27.7 16.6Z"/><path d="M64 30.3L64 34.1L50.4 31.5L37 26.5L35.3 21.1L40.3 19.4Z"/><path d="M38.3 14.9L40.3 19.4L35.3 21.1L27.7 16.6L18.3 4.9Z"/><path d="M64 24.7L64 30.3L40.3 19.4L38.3 14.9L42.9 13.2Z"/><path d="M13.5 0L28.2 0L41.6 9.4L42.9 13.2L38.3 14.9L18.3 4.9L15.1 2Z"/><path d="M64 3L64 24.7L42.9 13.2L41.6 9.4Z"/><path d="M28.2 0L64 0L64 3L41.6 9.4Z"/></g>
+  <path d="M29.6 23.4C33.8 17.3 37.8 11.6 41.4 6.6" fill="none" stroke="#5e3d22" stroke-width="1.5" stroke-linecap="round"/>
+  <g stroke="#5e3d22" stroke-width="1.5" stroke-linecap="round"><path d="M44 4.3 43.2 1.4M47.3 4.6 47.6 1.6"/></g>
+  <g fill="#5e3d22"><circle cx="43.1" cy="1.5" r="1.3"/><circle cx="47.6" cy="1.6" r="1.3"/>
+    <rect x="11.8" y="56.5" width="3.8" height="3" rx="1"/><rect x="33.1" y="56.5" width="3.8" height="3" rx="1"/>
+    <rect x="17.2" y="56.5" width="3.6" height="3" rx="1"/><rect x="27.7" y="56.5" width="3.6" height="3" rx="1"/></g>
+  <circle cx="50" cy="7.6" r="1.25" fill="#261a10"/>
+  <path d="M56.2 11.6C57 11.9 57.5 12.4 57.6 13" fill="none" stroke="#5e3d22" stroke-width=".9" stroke-linecap="round"/>
+</svg>

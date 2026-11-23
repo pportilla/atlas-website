@@ -63,12 +63,12 @@ main {
 
 .mark { grid-row: span 2; align-self: center; justify-self: center; }
 svg.mark { width: 2.3rem; height: auto; overflow: visible; }
+img.mark { width: 2.5rem; height: auto; }
 .mark.section { font: 400 2.1rem/1 var(--font-math); color: var(--brand-deep); }
 .mark.prompt { font: 600 1.35rem/1 var(--font-mono); color: var(--brand); letter-spacing: -.05em; }
 .mark.prompt span { color: var(--name); }
 .mark.github { width: 1.7rem; }
 main .mark.github path { fill: var(--ink-soft); }
-main .mark .edge { stroke: var(--ink-faint); stroke-width: 1.8; }
 
 /* Pictures share one cell and cross-fade as the reader moves down the list. */
 .previews { display: grid; align-self: center; }
