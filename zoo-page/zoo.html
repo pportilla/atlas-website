@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <script>try { const theme = localStorage.getItem("atlas-theme"); if (theme) document.documentElement.dataset.theme = theme; } catch (error) {}</script>
+  <title>Resolution Zoo · Atlas</title>
+  <link rel="icon" href="./zoo-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./identity.css">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./resolution.css">
+  <link rel="stylesheet" href="./zoo.css">
+  <script src="./exact-json.js" defer></script>
+  <script src="./typeset.js" defer></script>
+  <script src="./dual-graph.js" defer></script>
+  <script src="./zoo.js" defer></script>
+</head>
+<body class="zoo">
+  <a class="skip-link" href="#zoo-workspace">Skip to catalogue</a>
+  <header class="masthead">
+    <div class="page masthead-inner">
+      <a class="wordmark" href="../" aria-label="Atlas home"><pre class="ascii-art" aria-hidden="true"><!--atlas:wordmark--></pre></a>
+      <nav class="zoo-nav" aria-label="Atlas tools">
+        <a class="zoo-suite-link" href="../">Resolution suite</a>
+        <a class="zoo-nav-link" href="./" aria-current="page"><img src="./zoo-mark.svg" width="25" height="25" alt="">Resolution Zoo</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="zoo-workspace" class="page zoo-workspace" tabindex="-1">
+    <div class="zoo-title">
+      <h1>Resolution Zoo</h1>
+      <a href="https://github.com/pportilla/resolution-zoo">Catalogue source</a>
+    </div>
+    <noscript><p class="notice">Enable JavaScript to browse the catalogue. You can also <a href="./zoo-data/index.json">open the JSON index</a>.</p></noscript>
+
+    <section class="zoo-filters" aria-label="Catalogue filters">
+      <div class="zoo-fields">
+        <div class="zoo-search">
+          <div class="zoo-search-heading">
+            <label for="zoo-query">Search by monomials</label>
+            <details id="zoo-help" class="info-popover">
+              <summary aria-label="Monomial search help" aria-describedby="zoo-search-help"><span aria-hidden="true">i</span></summary>
+              <p id="zoo-search-help">Separate terms with commas. Atlas matches exact coefficients under a single renaming of variables and allows the whole equation to change sign.</p>
+            </details>
+          </div>
+          <div class="zoo-search-box">
+            <span class="search-icon" aria-hidden="true"></span>
+            <input id="zoo-query" type="search" placeholder="1/2*x*y^3, -z^4" autocomplete="off" autocapitalize="off" spellcheck="false" disabled>
+          </div>
+        </div>
+        <label class="zoo-label" for="zoo-label">Label
+          <select id="zoo-label" disabled><option value="">All labels</option></select>
+        </label>
+      </div>
+      <div id="zoo-dimensions" class="zoo-dimensions" role="group" aria-label="Dimension"></div>
+    </section>
+
+    <div class="zoo-browser">
+      <section class="zoo-catalogue" aria-labelledby="zoo-list-heading">
+        <header class="zoo-list-head">
+          <h2 id="zoo-list-heading">Catalogue</h2>
+          <p id="zoo-count" role="status"></p>
+        </header>
+        <p id="zoo-loading">Loading catalogue…</p>
+        <ul id="zoo-list" class="zoo-list"></ul>
+        <nav id="zoo-pages" class="zoo-pages" aria-label="Catalogue pages" hidden>
+          <button id="zoo-prev" class="button" type="button">Previous</button>
+          <span id="zoo-range"></span>
+          <button id="zoo-next" class="button" type="button">Next</button>
+        </nav>
+        <div id="zoo-feedback" aria-live="polite"></div>
+      </section>
+      <article id="zoo-detail" aria-label="Selected resolution record" tabindex="-1"></article>
+    </div>
+  </main>
+</body>
+</html>

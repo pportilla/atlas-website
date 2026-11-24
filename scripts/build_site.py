@@ -28,6 +28,9 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 ATLAS_URL = "https://github.com/pportilla/atlas"
 ZOO_URL = "https://github.com/pportilla/resolution-zoo"
+# The Resolution Zoo page belongs to the website; the Atlas server serves only
+# the resolution suite. The page reads its records from the Zoo repository.
+ZOO_PAGE = ROOT / "zoo-page"
 SEARCH_ASSIGNMENT = "window.ATLAS_SEARCH = "
 BUILD_MARKER = ".atlas-website-output"
 UPSTREAM_LINK = re.compile(r"""(<a\b[^>]*?\shref=["']""" + re.escape(ATLAS_URL) + r"/(?:blob|tree)/)main/")
@@ -134,14 +137,15 @@ def prepare_manual(atlas, docs, revision, zoo_revision):
 
 
 def render_brand(atlas):
-    """Read the actual terminal and resolution artwork from the pinned checkout."""
+    """Fill the resolution page and the website's Zoo page with the pinned checkout's artwork."""
     command = (
-        "import json; from pathlib import Path; "
+        "import json, sys; from pathlib import Path; "
         "from engine.web_brand import wordmark_html, fill_brand; "
-        "pages = [fill_brand(Path('web', name).read_text()) for name in ('index.html', 'zoo.html')]; "
-        "print(json.dumps([wordmark_html(), *pages]))"
+        "zoo = sys.stdin.read(); "
+        "print(json.dumps([wordmark_html(), fill_brand(Path('web', 'index.html').read_text()), fill_brand(zoo)]))"
     )
-    return json.loads(subprocess.check_output([sys.executable, "-c", command], cwd=atlas, text=True))
+    zoo = (ZOO_PAGE / "zoo.html").read_text(encoding="utf-8")
+    return json.loads(subprocess.check_output([sys.executable, "-c", command], cwd=atlas, text=True, input=zoo))
 
 
 def prepare_resolution(atlas, site, upstream):
@@ -159,6 +163,15 @@ def prepare_resolution(atlas, site, upstream):
         return f'{match["attr"]}="{relative}"'
 
     page = re.sub(r'(?P<attr>href|src)="/(?P<path>[^"/][^"]*|)"', local_url, upstream)
+    # The Atlas server has no Zoo page, so the website links its own.
+    if 'class="zoo-nav-link"' not in page:
+        title = '<h1 class="workspace-name">Resolution</h1>'
+        if page.count(title) != 1:
+            raise ValueError("Cannot locate the resolution title for the Zoo link")
+        page = page.replace(title, title + '\n      <a class="zoo-nav-link" href="../zoo/"><img src="../zoo/zoo-mark.svg" '
+                            'width="25" height="25" alt="">Resolution Zoo</a>', 1)
+    if 'href="../zoo/zoo.css"' not in page:
+        page = page.replace("</head>", '<link rel="stylesheet" href="../zoo/zoo.css">\n</head>', 1)
     hook = '<script src="../assets/resolution.js"></script>'
     page = page.replace("</head>", '<link rel="stylesheet" href="../tools.css">\n</head>')
     page = page.replace("<script ", hook + "\n  <script ", 1)
@@ -192,7 +205,7 @@ def prepare_zoo(atlas, site, upstream, catalogue, zoo_revision):
     """Stage the recorded results and compile the native matcher used at the Atlas prompt."""
     target = site / "zoo"
     for asset in ("zoo.css", "zoo.js", "zoo-mark.svg"):
-        shutil.copy2(atlas / "web" / asset, target / asset)
+        shutil.copy2(ZOO_PAGE / asset, target / asset)
     export_catalogue(catalogue, zoo_revision, target / "zoo-data")
     upstream = upstream.replace(f'href="{ZOO_URL}"', f'href="{ZOO_URL}/tree/{zoo_revision}"')
     shared = ("atlas-mark.svg", "identity.css", "style.css", "resolution.css", "complex.css",

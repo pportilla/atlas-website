@@ -2,7 +2,7 @@
 
 [Open the website](https://pportilla.github.io/atlas-website/) for the [manual](https://pportilla.github.io/atlas-website/docs/), [Atlas terminal](https://pportilla.github.io/atlas-website/terminal/), [Resolution Zoo](https://pportilla.github.io/atlas-website/zoo/), and [resolution suite](https://pportilla.github.io/atlas-website/resolution/).
 
-The Zoo loads saved JSON records from the published snapshot on demand and searches them with the native monomial matcher compiled to WebAssembly. The catalogue source link on the Zoo page opens the exact revision of the [Resolution Zoo repository](https://github.com/pportilla/resolution-zoo) used by that edition. Browsing and searching also work in the offline edition.
+The Zoo loads saved JSON records from the published snapshot on demand and searches them with the native monomial matcher compiled to WebAssembly. The catalogue source link on the Zoo page opens the exact revision of the [Resolution Zoo repository](https://github.com/pportilla/resolution-zoo) used by that edition. Browsing and searching also work in the offline edition. The Zoo page lives in [`zoo-page/`](zoo-page) in this repository; the Atlas server provides only the resolution suite.
 
 The terminal and resolution suite run on the visitor’s computer. When you start the terminal or submit a polynomial, the browser downloads a precompiled Atlas runtime and boots it in a Web Worker. It needs a recent desktop browser with WebAssembly threads, JavaScript, and enough memory for a Linux guest. The manual is available immediately. Closing the tab ends the session. Use **Download JSON** to keep a resolution record.
 
