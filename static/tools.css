@@ -47,6 +47,8 @@
 #command-hint { margin: .5rem 0; color: var(--ink-soft); font-size: .95rem; }
 .runtime-bar { justify-content: space-between; padding-block: .6rem 1rem; font-size: .95rem; }
 .runtime-bar nav { gap: .9rem; }
+.performance-note { border-inline-start: 2px solid var(--brand); padding-inline-start: .7rem; }
+.runtime-bar .performance-note { margin-block-start: .4rem; }
 @media (max-width: 520px) {
   .tool-nav { font-size: .8rem; gap: .6rem; }
   .terminal-page { padding: 1rem; }

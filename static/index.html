@@ -33,16 +33,28 @@
         <h2>Manual</h2>
         <p>Tutorials, worked examples, and a reference for Atlas functions.</p>
       </a>
-      <a class="destination to-terminal" href="terminal/">
+      <div class="destination to-terminal">
         <span class="mark prompt" aria-hidden="true">&gt;<span>_</span></span>
-        <h2>Terminal</h2>
-        <p>Run Atlas in your browser.</p>
-      </a>
-      <a class="destination to-resolution" href="resolution/">
+        <div class="destination-title">
+          <h2><a href="terminal/" aria-describedby="terminal-summary">Terminal</a></h2>
+          <span class="performance-hint">
+            <button type="button" aria-label="Terminal performance" aria-describedby="terminal-performance"><span aria-hidden="true">i</span></button>
+            <span id="terminal-performance" role="tooltip" hidden>Computations can take much longer in the browser than in a native Atlas installation.</span>
+          </span>
+        </div>
+        <p id="terminal-summary">Run Atlas in your browser.</p>
+      </div>
+      <div class="destination to-resolution">
         <svg class="mark" viewBox="0 0 36 32" aria-hidden="true"><path class="curve" d="M31 6C16.3 16 9 16 9 16C9 16 16.3 16 31 26"/><circle class="point" cx="9" cy="16" r="2.6"/></svg>
-        <h2>Resolution suite</h2>
-        <p>Resolve a hypersurface and examine its charts, divisors, and zeta functions.</p>
-      </a>
+        <div class="destination-title">
+          <h2><a href="resolution/" aria-describedby="resolution-summary">Resolution suite</a></h2>
+          <span class="performance-hint">
+            <button type="button" aria-label="Resolution suite performance" aria-describedby="resolution-performance"><span aria-hidden="true">i</span></button>
+            <span id="resolution-performance" role="tooltip" hidden>Computations can take much longer in the browser than in a native Atlas installation.</span>
+          </span>
+        </div>
+        <p id="resolution-summary">Resolve a hypersurface and examine its charts, divisors, and zeta functions.</p>
+      </div>
       <a class="destination to-zoo" href="zoo/">
         <img class="mark" src="zoo/giraffe-mark.svg" width="64" height="64" alt="">
         <h2>Resolution Zoo</h2>

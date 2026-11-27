@@ -50,7 +50,7 @@ main {
 }
 .destinations { display: flex; flex-direction: column; }
 .destination {
-  display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); column-gap: 1rem;
+  position: relative; display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); column-gap: 1rem;
   padding-block: .7rem; color: var(--ink); text-decoration: none;
 }
 .destination h2 {
@@ -58,8 +58,27 @@ main {
   font: 500 clamp(1.3rem, 2.1vw, 1.5rem)/1.25 var(--font-math);
 }
 .destination p { grid-column: 2; margin-top: .1rem; color: var(--ink-soft); line-height: 1.45; }
-.destination:hover h2, .destination:focus-visible h2 { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em; }
+.destination:hover h2, .destination:focus-visible h2, .destination h2 a:focus-visible { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em; }
 .external h2::after { content: "\2197" / ""; margin-left: .3em; font-size: .7em; color: var(--ink-faint); vertical-align: .25em; }
+
+.destination-title { display: flex; align-items: center; gap: .2rem; }
+.destination-title a { text-decoration: inherit; }
+/* Keep the whole destination clickable around its separate information button. */
+.destination-title a::after { content: ""; position: absolute; inset: 0; }
+.performance-hint button {
+  position: relative; display: grid; place-items: center; width: 1.8rem; height: 1.8rem;
+  padding: 0; border: 0; background: transparent; color: var(--brand-deep); cursor: help;
+}
+.performance-hint button span {
+  display: grid; place-items: center; width: 1rem; height: 1rem; border: 1px solid currentColor;
+  border-radius: 50%; font: 600 .8rem/1 var(--font-math);
+}
+.performance-hint [role="tooltip"] {
+  position: absolute; z-index: 2; inset-inline-start: 3.6rem; top: calc(.7rem + 1.8rem);
+  width: min(23rem, calc(100% - 3.6rem)); padding: .6rem .8rem;
+  border: 1px solid var(--rule-strong); border-radius: .25rem; background: var(--surface);
+  color: var(--ink); font: 400 1rem/1.4 var(--font-text);
+}
 
 .mark { grid-row: span 2; align-self: center; justify-self: center; }
 svg.mark { width: 2.3rem; height: auto; overflow: visible; }
@@ -77,7 +96,7 @@ main .mark.github path { fill: var(--ink-soft); }
   opacity: 0; transition: opacity .2s ease; overflow: visible;
 }
 .of-rest { opacity: 1; }
-main:has(.destination:hover, .destination:focus-visible) .of-rest { opacity: 0; }
+main:has(.destination:hover, .destination:focus-visible, .destination-title :focus-visible) .of-rest { opacity: 0; }
 /* The pointer wins over keyboard focus, so two pictures never overlap. */
 main:has(.to-docs:hover) .of-docs,
 main:has(.to-terminal:hover) .of-terminal,
@@ -85,8 +104,8 @@ main:has(.to-resolution:hover) .of-resolution,
 main:has(.to-zoo:hover) .of-zoo,
 main:has(.to-source:hover) .of-source,
 main:not(:has(.destination:hover)):has(.to-docs:focus-visible) .of-docs,
-main:not(:has(.destination:hover)):has(.to-terminal:focus-visible) .of-terminal,
-main:not(:has(.destination:hover)):has(.to-resolution:focus-visible) .of-resolution,
+main:not(:has(.destination:hover)):has(.to-terminal :focus-visible) .of-terminal,
+main:not(:has(.destination:hover)):has(.to-resolution :focus-visible) .of-resolution,
 main:not(:has(.destination:hover)):has(.to-zoo:focus-visible) .of-zoo,
 main:not(:has(.destination:hover)):has(.to-source:focus-visible) .of-source { opacity: 1; }
 
@@ -145,6 +164,13 @@ main .point { fill: var(--brand); }
 @media (max-width: 760px) {
   main { grid-template-columns: minmax(0, 1fr); }
   .previews { display: none; }
+}
+@media (hover: none), (max-width: 520px) {
+  .destination-title { display: grid; grid-template-columns: auto 1fr; justify-items: start; }
+  .performance-hint { display: contents; }
+  .performance-hint [role="tooltip"] {
+    position: relative; inset: auto; grid-column: 1 / -1; width: 100%; margin-block: .25rem;
+  }
 }
 @media (max-width: 520px) {
   .wrap { width: calc(100% - 2.5rem); }
